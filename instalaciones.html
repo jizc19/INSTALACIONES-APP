@@ -149,7 +149,7 @@ window.App = window.App || {};
 /* ===================== STORAGE (IndexedDB) ===================== */
 App.Storage = (function(){
   const DB_NAME = 'instalaciones_db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   let dbPromise = null;
 
   function open(){
@@ -169,6 +169,9 @@ App.Storage = (function(){
         }
         if(!db.objectStoreNames.contains('actividadesCatalogo')){
           db.createObjectStore('actividadesCatalogo', {keyPath:'id'});
+        }
+        if(!db.objectStoreNames.contains('gruposTrabajo')){
+          db.createObjectStore('gruposTrabajo', {keyPath:'id'});
         }
         if(!db.objectStoreNames.contains('config')){
           db.createObjectStore('config', {keyPath:'key'});
@@ -242,7 +245,11 @@ App.Repo = (function(){
       personalFijoIds: [], // ids de App.Repo trabajadores catálogo
       personalExtra: [], // {id,nombre,ciudad}
       registroHoras: [], // {id, trabajadorId, esExtra:bool, fecha, entrada, salida}
-      cronograma: [], // {id,nombre,horasEstimadas,origen:'manual'|'ia_historial'|'ia_general',horasReales}
+      cronograma: [], // {id,nombre,horasEstimadas,origen:'manual'|'ia_historial'|'ia_general',horasReales,asignado}
+      produccion: { unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas: [] }, // zonas: {id,nombre,cantidadRequerida}
+      avanceRegistros: [], // {id,fecha,zonaId,cantidad,asignado:{tipo,id,nombre},nota}
+      documentos: [], // {id,nombre,tipo,dataUrl,fecha}
+      checklistGeneral: [], // {id,texto,hecho,fechaCompletado}
       bitacoraDiaria: [], // {id,fecha,texto,desvio:bool}
       problemas: [], // {id,fecha,prioridad,texto,estado:'abierto'|'resuelto'}
       acta: {observaciones:'', firmaCliente:null, firmaResponsable:null, fechaEntrega:''},
@@ -271,6 +278,27 @@ App.Repo = (function(){
   function agregarActividadCatalogo(nombre){
     const a = {id: uid('act'), nombre};
     return S.put('actividadesCatalogo', a);
+  }
+  function catalogoGrupos(){ return S.getAll('gruposTrabajo'); }
+  function agregarGrupo(nombre, miembros){
+    const g = {id: uid('grp'), nombre, miembros: miembros||[]};
+    return S.put('gruposTrabajo', g);
+  }
+  function guardarGrupo(g){ return S.put('gruposTrabajo', g); }
+  function eliminarGrupo(id){ return S.delete('gruposTrabajo', id); }
+
+  // Tareas (actividades de cronograma) asignadas a un trabajador o grupo, a través de todas las instalaciones
+  async function tareasDe(tipo, id){
+    const todas = await listar();
+    const resultado = [];
+    todas.forEach(inst=>{
+      (inst.cronograma||[]).forEach(a=>{
+        if(a.asignado && a.asignado.tipo===tipo && a.asignado.id===id){
+          resultado.push({instalacionId: inst.id, instalacionNombre: inst.nombre, actividad: a});
+        }
+      });
+    });
+    return resultado;
   }
 
   function config(key){ return S.get('config', key); }
@@ -301,13 +329,38 @@ App.Repo = (function(){
     return h+'h '+m+'m';
   }
 
+  // Producción por unidades (ej. puertas, zonas/pisos, avance semanal)
+  function numSemanaISO(fechaStr){
+    const d = new Date(fechaStr+'T00:00:00');
+    const target = new Date(d.valueOf());
+    const dayNr = (d.getDay()+6)%7;
+    target.setDate(target.getDate()-dayNr+3);
+    const firstThursday = new Date(target.getFullYear(),0,4);
+    const diff = target - firstThursday;
+    const semana = 1 + Math.round(diff/(7*24*3600*1000));
+    return target.getFullYear()+'-S'+semana;
+  }
+  function calcularProduccion(inst){
+    const regs = inst.avanceRegistros||[];
+    const totalInstalado = regs.reduce((a,r)=>a+(r.cantidad||0),0);
+    const porZona = {};
+    regs.forEach(r=>{ porZona[r.zonaId] = (porZona[r.zonaId]||0)+r.cantidad; });
+    const semanaActual = numSemanaISO(hoy());
+    const instaladoSemana = regs.filter(r=> numSemanaISO(r.fecha)===semanaActual).reduce((a,r)=>a+r.cantidad,0);
+    const unidadTotal = (inst.produccion&&inst.produccion.unidadTotal)||0;
+    const pct = unidadTotal>0 ? Math.round(totalInstalado/unidadTotal*100) : 0;
+    return {totalInstalado, porZona, instaladoSemana, pct, unidadTotal};
+  }
+
   return {
     nuevaInstalacion, guardar, obtener, listar, eliminar,
     catalogoTrabajadores, agregarTrabajador,
     catalogoHerramientas, agregarHerramientaCatalogo,
     catalogoActividades, agregarActividadCatalogo,
+    catalogoGrupos, agregarGrupo, guardarGrupo, eliminarGrupo, tareasDe,
     config, setConfig,
-    calcularAvance, totalHoras, fmtMinutos
+    calcularAvance, totalHoras, fmtMinutos,
+    calcularProduccion, numSemanaISO
   };
 })();
 
@@ -370,6 +423,56 @@ App.IA = (function(){
   return {sugerirTiempo};
 })();
 
+/* ===================== CHARTS (SVG inline) ===================== */
+App.Charts = (function(){
+  function esc(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function barrasCronograma(actividades){
+    if(!actividades.length) return '';
+    const max = Math.max(...actividades.map(a=> Math.max(a.horasEstimadas||0, a.horasReales||0)), 1);
+    const filas = actividades.map(a=>{
+      const wEst = Math.round((a.horasEstimadas||0)/max*100);
+      const wReal = a.horasReales!=null ? Math.round((a.horasReales/max)*100) : 0;
+      return '<div style="margin-bottom:10px;">'+
+        '<div style="font-size:11.5px; font-weight:600; margin-bottom:3px;">'+esc(a.nombre)+'</div>'+
+        '<div style="background:var(--concreto-osc); border-radius:5px; height:10px; overflow:hidden; margin-bottom:2px;">'+
+          '<div style="background:var(--acero); height:100%; width:'+wEst+'%; border-radius:5px;"></div>'+
+        '</div>'+
+        (a.horasReales!=null ? '<div style="background:var(--concreto-osc); border-radius:5px; height:10px; overflow:hidden;">'+
+          '<div style="background:'+(a.horasReales>a.horasEstimadas?'var(--rojo)':'var(--verde)')+'; height:100%; width:'+wReal+'%; border-radius:5px;"></div>'+
+        '</div>' : '')+
+        '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:10px; color:var(--ink-suave); margin-top:2px;">'+
+          'Est: '+a.horasEstimadas+'h'+(a.horasReales!=null? ' · Real: '+a.horasReales+'h':'')+
+        '</div>'+
+      '</div>';
+    }).join('');
+    return '<div style="margin-bottom:14px;">'+filas+
+      '<div style="font-size:10px; color:var(--ink-suave); display:flex; gap:12px;">'+
+        '<span>▬ <span style="color:var(--acero);">Estimado</span></span>'+
+        '<span>▬ <span style="color:var(--verde);">Real (a tiempo)</span></span>'+
+        '<span>▬ <span style="color:var(--rojo);">Real (excedido)</span></span>'+
+      '</div></div>';
+  }
+
+  function barrasHoras(datos){
+    if(!datos.length) return '<div class="empty" style="padding:14px 0;">Sin horas registradas</div>';
+    const max = Math.max(...datos.map(d=>d.minutos), 1);
+    return datos.map(d=>{
+      const w = Math.max(Math.round(d.minutos/max*100), 2);
+      const horas = Math.floor(d.minutos/60), mins = d.minutos%60;
+      return '<div style="margin-bottom:9px;">'+
+        '<div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:3px;">'+
+          '<span>'+esc(d.nombre)+'</span><span style="font-family:\'IBM Plex Mono\',monospace; color:var(--ink-suave);">'+horas+'h '+mins+'m</span>'+
+        '</div>'+
+        '<div style="background:var(--concreto-osc); border-radius:5px; height:12px; overflow:hidden;">'+
+          '<div style="background:var(--naranja); height:100%; width:'+w+'%; border-radius:5px;"></div>'+
+        '</div></div>';
+    }).join('');
+  }
+
+  return {barrasCronograma, barrasHoras};
+})();
+
 /* ===================== UI HELPERS ===================== */
 App.UIHelpers = (function(){
   function toast(msg){
@@ -430,10 +533,22 @@ App.Views.ajustes = async function(){
 App.Views.personalGlobal = async function(){
   const {esc} = App.UIHelpers;
   const cat = await App.Repo.catalogoTrabajadores();
+  const grupos = await App.Repo.catalogoGrupos();
+
   const filas = cat.map(t=>
     '<div class="worker-row"><div class="avatar">'+iniciales(t.nombre)+'</div>'+
-    '<div class="worker-name">'+esc(t.nombre)+(t.rol? ' <span style="font-weight:500; color:var(--ink-suave); font-size:11px;">· '+esc(t.rol)+'</span>':'')+'</div></div>'
+    '<div class="worker-name">'+esc(t.nombre)+(t.rol? ' <span style="font-weight:500; color:var(--ink-suave); font-size:11px;">· '+esc(t.rol)+'</span>':'')+'</div>'+
+    '<button class="btn-outline" style="margin:0; width:auto; padding:6px 10px; font-size:11px;" onclick="App.Router.abrirTareas(\'trabajador\',\''+t.id+'\',\''+esc(t.nombre)+'\')">Ver tareas</button></div>'
   ).join('') || '<div class="empty">Sin trabajadores en el catálogo todavía</div>';
+
+  const opcionesMiembros = cat.map(t=> '<label style="display:flex; align-items:center; gap:8px; font-weight:500; font-size:13px; margin-bottom:6px;"><input type="checkbox" value="'+t.id+'" class="chkMiembroGrupo" style="width:auto; margin:0;"> '+esc(t.nombre)+'</label>').join('') || '<div class="empty" style="padding:8px 0;">Agrega trabajadores primero</div>';
+
+  const gruposHtml = grupos.map(g=>{
+    const nombres = g.miembros.map(id=>{ const t=cat.find(x=>x.id===id); return t?t.nombre:null; }).filter(Boolean).join(', ');
+    return '<div class="worker-row"><div class="avatar" style="background:var(--acero-claro); color:var(--acero);">👥</div>'+
+      '<div class="worker-name">'+esc(g.nombre)+'<div style="font-weight:500; color:var(--ink-suave); font-size:11px;">'+esc(nombres||'sin miembros')+'</div></div>'+
+      '<button class="btn-outline" style="margin:0; width:auto; padding:6px 10px; font-size:11px;" onclick="App.Router.abrirTareas(\'grupo\',\''+g.id+'\',\''+esc(g.nombre)+'\')">Ver tareas</button></div>';
+  }).join('') || '<div class="empty">Sin grupos de trabajo todavía</div>';
 
   const html =
     '<div class="topbar" style="padding-bottom:20px;">'+
@@ -441,11 +556,94 @@ App.Views.personalGlobal = async function(){
       '<div class="det-title">Personal (catálogo)</div>'+
     '</div>'+
     '<div class="content">'+
+      '<button class="btn-outline" onclick="App.Router.abrirHorasGlobales()">📊 Ver horas de todos (todos los proyectos)</button>'+
       '<div class="card"><h3>Trabajadores fijos</h3>'+filas+'</div>'+
       '<div class="card"><h3>Agregar trabajador</h3>'+
         '<label>Nombre</label><input type="text" id="pgNombre" placeholder="Nombre completo">'+
         '<label>Rol / especialidad</label><input type="text" id="pgRol" placeholder="Ej. Instalador">'+
         '<button class="btn-primary" onclick="App.Handlers.agregarTrabajadorGlobal()">Agregar al catálogo</button>'+
+      '</div>'+
+      '<div class="card"><h3>Grupos de trabajo</h3>'+gruposHtml+'</div>'+
+      '<div class="card"><h3>Crear grupo de trabajo</h3>'+
+        '<label>Nombre del grupo</label><input type="text" id="pgGrupoNombre" placeholder="Ej. Cuadrilla Norte">'+
+        '<label>Miembros</label>'+opcionesMiembros+
+        '<button class="btn-primary" style="margin-top:8px;" onclick="App.Handlers.crearGrupo()">Crear grupo</button>'+
+      '</div>'+
+    '</div>';
+  document.getElementById('app').innerHTML = html;
+};
+
+App.Views.horasGlobales = async function(){
+  const {esc} = App.UIHelpers;
+  const todas = await App.Repo.listar();
+  const cat = await App.Repo.catalogoTrabajadores();
+  const yo = await App.Repo.config('miNombre');
+  const miNombre = yo ? yo.value : 'Isaac Zamora';
+
+  const acumulado = {}; // key: 'trabajador|id' o 'extra|id' o 'YO' -> {nombre, minutos}
+  todas.forEach(inst=>{
+    (inst.registroHoras||[]).forEach(r=>{
+      if(!r.entrada || !r.salida) return;
+      const [eh,em]=r.entrada.split(':').map(Number);
+      const [sh,sm]=r.salida.split(':').map(Number);
+      const min = (sh*60+sm)-(eh*60+em);
+      if(min<=0) return;
+      let key, nombre;
+      if(r.trabajadorId==='YO'){ key='YO'; nombre=miNombre+' (tú)'; }
+      else if(r.esExtra){
+        const p = (inst.personalExtra||[]).find(x=>x.id===r.trabajadorId);
+        key = 'extra|'+r.trabajadorId; nombre = p?p.nombre:'—';
+      } else {
+        const t = cat.find(x=>x.id===r.trabajadorId);
+        key = 'fijo|'+r.trabajadorId; nombre = t?t.nombre:'—';
+      }
+      if(!acumulado[key]) acumulado[key] = {nombre, minutos:0};
+      acumulado[key].minutos += min;
+    });
+  });
+  const datos = Object.values(acumulado).sort((a,b)=>b.minutos-a.minutos);
+
+  const html =
+    '<div class="topbar" style="padding-bottom:20px;">'+
+      '<button class="back" onclick="App.Router.abrirPersonalGlobal()">‹ PERSONAL</button>'+
+      '<div class="det-title">Horas totales</div>'+
+      '<div class="det-cliente">Acumulado en todas tus instalaciones</div>'+
+    '</div>'+
+    '<div class="content">'+
+      '<div class="card"><h3>Por persona</h3>'+App.Charts.barrasHoras(datos)+'</div>'+
+    '</div>';
+  document.getElementById('app').innerHTML = html;
+};
+
+App.Views.tareas = async function(tipo, id, nombre){
+  const {esc} = App.UIHelpers;
+  const items = await App.Repo.tareasDe(tipo, id);
+  const pendientes = items.filter(x=>!x.actividad.completada);
+  const hechas = items.filter(x=>x.actividad.completada);
+
+  function fila(x){
+    const a = x.actividad;
+    return '<div class="envio-card">'+
+      '<div style="display:flex; justify-content:space-between; align-items:center;">'+
+        '<div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
+        '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:12px; color:var(--ink-suave);">'+a.horasEstimadas+'h'+(a.horasReales!=null?' · real '+a.horasReales+'h':'')+'</div>'+
+      '</div>'+
+      '<div style="font-size:11.5px; color:var(--ink-suave); margin-top:4px;">Proyecto: '+esc(x.instalacionNombre)+'</div>'+
+    '</div>';
+  }
+
+  const html =
+    '<div class="topbar" style="padding-bottom:20px;">'+
+      '<button class="back" onclick="App.Router.abrirPersonalGlobal()">‹ PERSONAL</button>'+
+      '<div class="det-title">'+(tipo==='grupo'?'👥 ':'👤 ')+esc(nombre)+'</div>'+
+      '<div class="det-cliente">Tareas asignadas en todos los proyectos</div>'+
+    '</div>'+
+    '<div class="content">'+
+      '<div class="card"><h3>Pendientes <span class="count">'+pendientes.length+'</span></h3>'+
+        (pendientes.map(fila).join('') || '<div class="empty" style="padding:14px 0;">Sin tareas pendientes</div>')+
+      '</div>'+
+      '<div class="card"><h3>Completadas <span class="count">'+hechas.length+'</span></h3>'+
+        (hechas.map(fila).join('') || '<div class="empty" style="padding:14px 0;">Todavía no ha completado tareas</div>')+
       '</div>'+
     '</div>';
   document.getElementById('app').innerHTML = html;
@@ -551,13 +749,47 @@ App.Views.faseAntes = async function(inst){
         '<div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
         '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:13px; font-weight:600; color:var(--naranja-osc);">'+a.horasEstimadas+'h</div>'+
       '</div>'+
+      '<div style="font-size:11.5px; color:var(--acero); margin-top:4px;">'+(a.asignado? (a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre) : '<span style="color:var(--ink-suave);">Sin asignar</span>')+'</div>'+
       (a.nota? '<div class="ai-tag">'+(a.origen!=='manual'?'✨ ':'')+esc(a.nota)+'</div>' : '')+
-      '<button class="check-del" style="margin-top:4px;" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'cronograma\',\''+a.id+'\')">✕ quitar</button>'+
+      '<div style="display:flex; gap:8px; margin-top:6px;">'+
+        '<button class="btn-outline" style="margin:0; padding:6px 10px; font-size:11px;" onclick="App.Handlers.reasignarActividad(\''+inst.id+'\',\''+a.id+'\')">Reasignar</button>'+
+        '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'cronograma\',\''+a.id+'\')">✕ quitar</button>'+
+      '</div>'+
     '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin actividades en el cronograma</div>';
+
+  const cronoChart = (inst.cronograma||[]).length ? App.Charts.barrasCronograma(inst.cronograma) : '';
+
+  const docTipoIcono = {cotizacion:'📄', presupuesto:'💰', contrato:'📝', otro:'📎'};
+  const documentosHtml = (inst.documentos||[]).map(d=>
+    '<div class="check-row">'+
+      '<div class="check-label">'+(docTipoIcono[d.tipo]||'📎')+' '+esc(d.nombre)+' <span style="color:var(--ink-suave); font-size:11px;">· '+fmtFecha(d.fecha)+'</span></div>'+
+      '<a href="'+d.dataUrl+'" download="'+esc(d.nombre)+'" style="font-size:11px; font-weight:700; color:var(--acero); text-decoration:none; padding:4px 8px;">Ver</a>'+
+      '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'documentos\',\''+d.id+'\')">✕</button>'+
+    '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin documentos adjuntos</div>';
+
+  const checklistHtml = (inst.checklistGeneral||[]).map(c=>
+    '<div class="check-row">'+
+      '<button class="checkbox '+(c.hecho?'on':'')+'" onclick="App.Handlers.toggleChecklistGeneral(\''+inst.id+'\',\''+c.id+'\')"></button>'+
+      '<div class="check-label">'+esc(c.texto)+(c.hecho && c.fechaCompletado? ' <span style="color:var(--verde); font-size:10.5px;">· hecho '+fmtFecha(c.fechaCompletado)+'</span>':'')+'</div>'+
+      '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'checklistGeneral\',\''+c.id+'\')">✕</button>'+
+    '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin pendientes registrados</div>';
+  const checklistHechos = (inst.checklistGeneral||[]).filter(c=>c.hecho).length;
 
   return (
     (inst.cotizacionRef? '<div class="card" style="background:var(--acero-claro); color:var(--acero); font-size:12.5px;">📄 Referencia: '+esc(inst.cotizacionRef)+'</div>'
       : '<div class="card"><label>Referencia de cotización (texto breve)</label><input type="text" id="fCotiz" placeholder="Ej. COT-4471, closets + cocina"><button class="btn-outline" onclick="App.Handlers.guardarCotizacion(\''+inst.id+'\')">Guardar referencia</button></div>')+
+
+    '<div class="card"><h3>Checklist general <span class="count">'+checklistHechos+'/'+(inst.checklistGeneral||[]).length+'</span></h3>'+checklistHtml+
+      '<div style="display:flex; gap:8px;">'+
+      '<button class="btn-outline" style="margin-top:8px;" onclick="App.Handlers.agregarChecklistItem(\''+inst.id+'\')">+ Agregar pendiente</button>'+
+      (!(inst.checklistGeneral||[]).length? '<button class="btn-outline" style="margin-top:8px;" onclick="App.Handlers.cargarChecklistEstandar(\''+inst.id+'\')">Usar checklist estándar</button>':'')+
+      '</div></div>'+
+
+    '<div class="card"><h3>Documentos <span class="count">'+(inst.documentos||[]).length+'</span></h3>'+documentosHtml+
+      '<label style="margin-top:8px;">Subir documento</label>'+
+      '<select id="docTipo" style="margin-bottom:8px;"><option value="cotizacion">Cotización</option><option value="presupuesto">Presupuesto</option><option value="contrato">Contrato</option><option value="otro">Otro</option></select>'+
+      '<input type="file" id="docFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">'+
+      '<button class="btn-outline" onclick="App.Handlers.subirDocumento(\''+inst.id+'\')">Subir</button></div>'+
 
     '<div class="card"><h3>Herramientas · Propias <span class="count">'+propiasLlevo+'/'+(inst.herramientasPropias||[]).length+'</span></h3>'+propiasHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarHerramientaPropia(\''+inst.id+'\')">+ Agregar herramienta</button></div>'+
@@ -580,7 +812,7 @@ App.Views.faseAntes = async function(inst){
     '<div class="card"><h3>Personal · Extra / eventual</h3>'+extraHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarPersonalExtra(\''+inst.id+'\')">+ Agregar personal extra</button></div>'+
 
-    '<div class="card"><h3>Cronograma</h3>'+cronoHtml+
+    '<div class="card"><h3>Cronograma</h3>'+cronoChart+cronoHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarActividad(\''+inst.id+'\')">+ Agregar actividad</button></div>'+
 
     (inst.estado==='pendiente'? '<button class="btn-primary" onclick="App.Handlers.pasarACurso(\''+inst.id+'\')">Marcar como "En curso"</button>' : '')
@@ -633,6 +865,54 @@ App.Views.faseDurante = async function(inst){
   const avance = App.Repo.calcularAvance(inst);
   const completadas = (inst.cronograma||[]).filter(a=>a.completada).length;
 
+  const datosHoras = [];
+  (inst.personalFijoIds||[]).forEach(id=>{
+    const t = trabajadoresCat.find(x=>x.id===id);
+    const min = App.Repo.totalHoras({registroHoras:(inst.registroHoras||[]).filter(r=>r.trabajadorId===id && !r.esExtra)});
+    if(min>0) datosHoras.push({nombre: t?t.nombre:'—', minutos: min});
+  });
+  (inst.personalExtra||[]).forEach(p=>{
+    const min = App.Repo.totalHoras({registroHoras:(inst.registroHoras||[]).filter(r=>r.trabajadorId===p.id && r.esExtra)});
+    if(min>0) datosHoras.push({nombre: p.nombre, minutos: min});
+  });
+  if(minYo>0) datosHoras.push({nombre: miNombre+' (tú)', minutos: minYo});
+  datosHoras.sort((a,b)=>b.minutos-a.minutos);
+
+  const prod = inst.produccion || {unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas:[]};
+  const calc = App.Repo.calcularProduccion(inst);
+  const zonasHtml = (prod.zonas||[]).map(z=>{
+    const inst2 = calc.porZona[z.id]||0;
+    const pctZ = z.cantidadRequerida>0 ? Math.round(inst2/z.cantidadRequerida*100) : 0;
+    return '<div style="margin-bottom:9px;">'+
+      '<div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:600;"><span>'+esc(z.nombre)+'</span>'+
+      '<span style="font-family:\'IBM Plex Mono\',monospace; color:var(--ink-suave);">'+inst2+'/'+z.cantidadRequerida+'</span></div>'+
+      '<div class="progress-track"><div class="progress-fill '+(pctZ>=100?'done':'')+'" style="width:'+Math.min(pctZ,100)+'%"></div></div>'+
+    '</div>';
+  }).join('') || '<div class="empty" style="padding:14px 0;">Sin zonas/pisos definidos todavía</div>';
+
+  const metaSemanal = prod.metaSemanal||0;
+  const semanaOk = metaSemanal>0 ? calc.instaladoSemana>=metaSemanal : null;
+  const registrosRecientes = (inst.avanceRegistros||[]).slice().reverse().slice(0,8).map(r=>{
+    const z = (prod.zonas||[]).find(x=>x.id===r.zonaId);
+    return '<div class="check-row"><div class="check-label">'+fmtFecha(r.fecha)+' · '+esc(z?z.nombre:'—')+' · <b>+'+r.cantidad+'</b>'+(r.asignado?' · '+(r.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(r.asignado.nombre):'')+'</div></div>';
+  }).join('') || '<div class="empty" style="padding:14px 0;">Sin registros de avance</div>';
+
+  const produccionHtml = prod.unidadTotal>0 ?
+    '<div style="margin-bottom:14px;">'+
+      '<div style="display:flex; justify-content:space-between; align-items:baseline;">'+
+        '<div style="font-family:\'Oswald\',sans-serif; font-size:26px; font-weight:700;">'+calc.totalInstalado+'<span style="font-size:14px; color:var(--ink-suave);"> / '+calc.unidadTotal+' '+esc(prod.unidadNombre||'unidades')+'</span></div>'+
+        '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:15px; font-weight:600; color:var(--naranja-osc);">'+calc.pct+'%</div>'+
+      '</div>'+
+      '<div class="progress-track" style="height:9px; margin-top:6px;"><div class="progress-fill" style="width:'+Math.min(calc.pct,100)+'%"></div></div>'+
+      (metaSemanal>0? '<div style="margin-top:10px; padding:9px 11px; border-radius:8px; background:'+(semanaOk?'var(--verde-claro)':'var(--rojo-claro)')+';">'+
+        '<div style="font-size:11.5px; font-weight:700; color:'+(semanaOk?'var(--verde)':'var(--rojo)')+';">'+(semanaOk?'✓ Vas al ritmo esta semana':'⚠ Vas por debajo de la meta semanal')+'</div>'+
+        '<div style="font-size:11px; color:var(--ink-suave); margin-top:2px;">'+calc.instaladoSemana+' de '+metaSemanal+' '+esc(prod.unidadNombre||'unidades')+' esta semana</div>'+
+      '</div>' : '')+
+    '</div>'+
+    '<div class="section-label" style="margin-top:4px;">Por zona / piso</div>'+zonasHtml+
+    '<div class="section-label">Registros recientes</div>'+registrosRecientes
+    : '<div class="empty" style="padding:14px 0;">Configura la producción por unidades para proyectos grandes (ej. cuántas puertas por piso).</div>';
+
   const bitacoraHtml = (inst.bitacoraDiaria||[]).slice().reverse().map(b=>
     '<div class="bitacora-entry"><div class="bitacora-fecha">'+fmtFecha(b.fecha)+(b.desvio? ' · DESVÍO DEL PLAN':'')+'</div>'+
     '<div class="bitacora-txt">'+esc(b.texto)+'</div></div>'
@@ -653,7 +933,16 @@ App.Views.faseDurante = async function(inst){
       '<button class="clock-btn" onclick="App.Handlers.checar(\''+inst.id+'\',\'YO\',false)">'+(abiertoYo?'Marcar salida':'Marcar entrada')+'</button>'+
     '</div>'+
 
+    '<div class="card"><h3>Producción por unidades</h3>'+produccionHtml+
+      '<div style="display:flex; gap:8px; margin-top:8px;">'+
+      '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.configurarProduccion(\''+inst.id+'\')">'+(prod.unidadTotal>0?'Editar configuración':'Configurar')+'</button>'+
+      (prod.unidadTotal>0? '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.agregarZona(\''+inst.id+'\')">+ Zona/piso</button>'+
+      '<button class="btn-primary" style="margin:0; flex:1;" onclick="App.Handlers.registrarAvance(\''+inst.id+'\')">Registrar avance</button>' : '')+
+      '</div></div>'+
+
     '<div class="card"><h3>Personal en sitio</h3>'+(personalRows||'<div class="empty" style="padding:14px 0;">Sin personal asignado</div>')+'</div>'+
+
+    '<div class="card"><h3>Horas por persona</h3>'+App.Charts.barrasHoras(datosHoras)+'</div>'+
 
     '<div class="card"><h3>Avance general</h3>'+
       '<div class="progress-track" style="height:8px;"><div class="progress-fill" style="width:'+avance+'%"></div></div>'+
@@ -791,6 +1080,60 @@ App.Handlers = (function(){
     await guardarYRefrescar(i);
   }
 
+  // ---- Checklist general ----
+  const CHECKLIST_ESTANDAR = [
+    'Confirmar medidas y especificaciones contra cotización',
+    'Verificar que el pedido salió completo de fábrica',
+    'Confirmar personal asignado y disponibilidad',
+    'Solicitar herramientas faltantes',
+    'Coordinar transporte y horarios de carga',
+    'Confirmar acceso y horario permitido en el sitio',
+    'Revisar documentos (cotización, contrato) completos',
+    'Notificar al cliente la fecha de instalación'
+  ];
+  function agregarChecklistItem(instId){
+    openModal('Agregar pendiente',
+      '<label>¿Qué hay que hacer?</label><input type="text" id="clTexto" placeholder="Ej. Confirmar acceso al edificio">'+
+      '<button class="btn-primary" onclick="App.Handlers._confirmarChecklistItem(\''+instId+'\')">Agregar</button>'
+    );
+  }
+  async function _confirmarChecklistItem(instId){
+    const texto = document.getElementById('clTexto').value.trim();
+    if(!texto) return;
+    const i = await inst(instId);
+    i.checklistGeneral.push({id: uid('cl'), texto, hecho:false, fechaCompletado:null});
+    closeModal();
+    await guardarYRefrescar(i);
+  }
+  async function cargarChecklistEstandar(instId){
+    const i = await inst(instId);
+    CHECKLIST_ESTANDAR.forEach(texto=> i.checklistGeneral.push({id: uid('cl'), texto, hecho:false, fechaCompletado:null}));
+    await guardarYRefrescar(i);
+  }
+  async function toggleChecklistGeneral(instId, itemId){
+    const i = await inst(instId);
+    const c = i.checklistGeneral.find(x=>x.id===itemId);
+    if(c){ c.hecho = !c.hecho; c.fechaCompletado = c.hecho ? hoy() : null; }
+    await guardarYRefrescar(i);
+  }
+
+  // ---- Documentos ----
+  function subirDocumento(instId){
+    const fileInput = document.getElementById('docFile');
+    const tipo = document.getElementById('docTipo').value;
+    const file = fileInput.files[0];
+    if(!file){ toast('Selecciona un archivo primero'); return; }
+    const reader = new FileReader();
+    reader.onload = async function(e){
+      const i = await inst(instId);
+      i.documentos.push({id: uid('doc'), nombre:file.name, tipo, dataUrl:e.target.result, fecha:hoy()});
+      await guardarYRefrescar(i);
+      toast('Documento subido');
+    };
+    reader.onerror = function(){ toast('No se pudo leer el archivo'); };
+    reader.readAsDataURL(file);
+  }
+
   // ---- Herramientas propias ----
   function agregarHerramientaPropia(instId){
     openModal('Agregar herramienta propia',
@@ -911,19 +1254,35 @@ App.Handlers = (function(){
   // ---- Personal fijo ----
   async function agregarPersonalFijo(instId){
     const cat = await App.Repo.catalogoTrabajadores();
+    const grupos = await App.Repo.catalogoGrupos();
     const i = await inst(instId);
     const disponibles = cat.filter(t=> !i.personalFijoIds.includes(t.id));
     const opciones = disponibles.map(t=>'<option value="'+t.id+'">'+esc(t.nombre)+'</option>').join('');
+    const opcionesGrupos = grupos.map(g=>'<option value="'+g.id+'">'+esc(g.nombre)+' ('+g.miembros.length+' personas)</option>').join('');
     openModal('Asignar personal fijo',
       (disponibles.length?
         '<label>Trabajador del catálogo</label><select id="pSelect">'+opciones+'</select>'+
         '<button class="btn-primary" onclick="App.Handlers._confirmarPersonalFijo(\''+instId+'\')">Asignar</button>'
         : '<div class="empty">No hay más trabajadores en tu catálogo.</div>')+
+      (grupos.length?
+        '<div class="section-label">O asignar un grupo completo</div>'+
+        '<label>Grupo de trabajo</label><select id="gSelect">'+opcionesGrupos+'</select>'+
+        '<button class="btn-primary" onclick="App.Handlers._confirmarGrupoFijo(\''+instId+'\')">Asignar grupo completo</button>'
+        : '')+
       '<div class="section-label">O agrega uno nuevo al catálogo</div>'+
       '<label>Nombre</label><input type="text" id="pNombreNuevo" placeholder="Nombre completo">'+
       '<label>Rol / especialidad</label><input type="text" id="pRolNuevo" placeholder="Ej. Instalador">'+
       '<button class="btn-outline" onclick="App.Handlers._crearYAsignarTrabajador(\''+instId+'\')">Crear y asignar</button>'
     );
+  }
+  async function _confirmarGrupoFijo(instId){
+    const gid = document.getElementById('gSelect').value;
+    const grupos = await App.Repo.catalogoGrupos();
+    const g = grupos.find(x=>x.id===gid);
+    const i = await inst(instId);
+    if(g){ g.miembros.forEach(id=>{ if(!i.personalFijoIds.includes(id)) i.personalFijoIds.push(id); }); }
+    closeModal();
+    await guardarYRefrescar(i);
   }
   async function _confirmarPersonalFijo(instId){
     const id = document.getElementById('pSelect').value;
@@ -982,28 +1341,78 @@ App.Handlers = (function(){
   }
 
   // ---- Cronograma ----
-  function agregarActividad(instId){
+  async function agregarActividad(instId){
+    const i = await inst(instId);
+    const trabCat = await App.Repo.catalogoTrabajadores();
+    const grupos = await App.Repo.catalogoGrupos();
+    let opciones = '<option value="">Sin asignar todavía</option>';
+    (i.personalFijoIds||[]).forEach(id=>{
+      const t = trabCat.find(x=>x.id===id);
+      if(t) opciones += '<option value="trabajador|'+t.id+'|'+esc(t.nombre)+'">👤 '+esc(t.nombre)+'</option>';
+    });
+    (i.personalExtra||[]).forEach(p=>{
+      opciones += '<option value="trabajador|'+p.id+'|'+esc(p.nombre)+'">👤 '+esc(p.nombre)+' (extra)</option>';
+    });
+    grupos.forEach(g=>{
+      opciones += '<option value="grupo|'+g.id+'|'+esc(g.nombre)+'">👥 '+esc(g.nombre)+'</option>';
+    });
     openModal('Agregar actividad',
       '<label>Nombre de la actividad</label><input type="text" id="aNombre" placeholder="Ej. Instalación de closets">'+
       '<label>Horas estimadas (déjalo vacío para que la IA sugiera)</label><input type="number" id="aHoras" placeholder="Ej. 6" step="0.5">'+
+      '<label>Asignar a</label><select id="aAsignado">'+opciones+'</select>'+
       '<button class="btn-primary" onclick="App.Handlers._confirmarActividad(\''+instId+'\')">Agregar</button>'
     );
+  }
+  function _leerAsignado(){
+    const val = document.getElementById('aAsignado').value;
+    if(!val) return null;
+    const [tipo, id, nombre] = val.split('|');
+    return {tipo, id, nombre};
   }
   async function _confirmarActividad(instId){
     const nombre = document.getElementById('aNombre').value.trim();
     const horasInput = document.getElementById('aHoras').value;
+    const asignado = _leerAsignado();
     if(!nombre) return;
     closeModal();
     const i = await inst(instId);
     if(horasInput){
-      i.cronograma.push({id: uid('crn'), nombre, horasEstimadas: parseFloat(horasInput), origen:'manual', nota:'', completada:false, horasReales:null});
+      i.cronograma.push({id: uid('crn'), nombre, horasEstimadas: parseFloat(horasInput), origen:'manual', nota:'', completada:false, horasReales:null, asignado});
       await guardarYRefrescar(i);
     } else {
       toast('Consultando IA para estimar tiempo...');
       const sug = await App.IA.sugerirTiempo(nombre);
-      i.cronograma.push({id: uid('crn'), nombre, horasEstimadas: sug.horas, origen: sug.origen, nota: sug.nota, completada:false, horasReales:null});
+      i.cronograma.push({id: uid('crn'), nombre, horasEstimadas: sug.horas, origen: sug.origen, nota: sug.nota, completada:false, horasReales:null, asignado});
       await guardarYRefrescar(i);
     }
+  }
+  async function reasignarActividad(instId, itemId){
+    const i = await inst(instId);
+    const trabCat = await App.Repo.catalogoTrabajadores();
+    const grupos = await App.Repo.catalogoGrupos();
+    let opciones = '<option value="">Sin asignar</option>';
+    (i.personalFijoIds||[]).forEach(id=>{
+      const t = trabCat.find(x=>x.id===id);
+      if(t) opciones += '<option value="trabajador|'+t.id+'|'+esc(t.nombre)+'">👤 '+esc(t.nombre)+'</option>';
+    });
+    (i.personalExtra||[]).forEach(p=>{
+      opciones += '<option value="trabajador|'+p.id+'|'+esc(p.nombre)+'">👤 '+esc(p.nombre)+' (extra)</option>';
+    });
+    grupos.forEach(g=>{
+      opciones += '<option value="grupo|'+g.id+'|'+esc(g.nombre)+'">👥 '+esc(g.nombre)+'</option>';
+    });
+    openModal('Reasignar actividad',
+      '<label>Asignar a</label><select id="aAsignado">'+opciones+'</select>'+
+      '<button class="btn-primary" onclick="App.Handlers._confirmarReasignar(\''+instId+'\',\''+itemId+'\')">Guardar</button>'
+    );
+  }
+  async function _confirmarReasignar(instId, itemId){
+    const asignado = _leerAsignado();
+    const i = await inst(instId);
+    const a = i.cronograma.find(x=>x.id===itemId);
+    if(a) a.asignado = asignado;
+    closeModal();
+    await guardarYRefrescar(i);
   }
   async function completarActividad(instId, itemId){
     openModal('Completar actividad',
@@ -1018,6 +1427,99 @@ App.Handlers = (function(){
     if(a){ a.completada = true; a.horasReales = horas || a.horasEstimadas; }
     closeModal();
     await guardarYRefrescar(i);
+  }
+
+  // ---- Producción por unidades ----
+  async function configurarProduccion(instId){
+    const i = await inst(instId);
+    const p = i.produccion || {unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas:[]};
+    openModal('Configurar producción',
+      '<label>¿Qué se está instalando? (unidad)</label><input type="text" id="prUnidad" value="'+esc(p.unidadNombre)+'" placeholder="Ej. puertas">'+
+      '<label>Cantidad total del proyecto</label><input type="number" id="prTotal" value="'+(p.unidadTotal||'')+'" placeholder="Ej. 2700">'+
+      '<label>Meta semanal (opcional)</label><input type="number" id="prMeta" value="'+(p.metaSemanal||'')+'" placeholder="Ej. 100">'+
+      '<button class="btn-primary" onclick="App.Handlers._confirmarProduccion(\''+instId+'\')">Guardar</button>'
+    );
+  }
+  async function _confirmarProduccion(instId){
+    const unidadNombre = document.getElementById('prUnidad').value.trim();
+    const unidadTotal = parseInt(document.getElementById('prTotal').value) || 0;
+    const metaSemanal = parseInt(document.getElementById('prMeta').value) || 0;
+    const i = await inst(instId);
+    if(!i.produccion) i.produccion = {zonas:[]};
+    i.produccion.unidadNombre = unidadNombre;
+    i.produccion.unidadTotal = unidadTotal;
+    i.produccion.metaSemanal = metaSemanal;
+    if(!i.produccion.zonas) i.produccion.zonas = [];
+    closeModal();
+    await guardarYRefrescar(i);
+  }
+  function agregarZona(instId){
+    openModal('Agregar zona / piso',
+      '<label>Nombre (ej. "Piso 5")</label><input type="text" id="zNombre" placeholder="Ej. Piso 5">'+
+      '<label>Cantidad requerida ahí</label><input type="number" id="zCantidad" placeholder="Ej. 54">'+
+      '<div class="section-label">O generar varias de una vez</div>'+
+      '<label>Desde piso</label><input type="number" id="zDesde" placeholder="Ej. 1">'+
+      '<label>Hasta piso</label><input type="number" id="zHasta" placeholder="Ej. 50">'+
+      '<label>Cantidad requerida por piso</label><input type="number" id="zCantidadRango" placeholder="Ej. 54">'+
+      '<button class="btn-primary" onclick="App.Handlers._confirmarZona(\''+instId+'\')">Agregar</button>'
+    );
+  }
+  async function _confirmarZona(instId){
+    const i = await inst(instId);
+    if(!i.produccion) i.produccion = {unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas:[]};
+    if(!i.produccion.zonas) i.produccion.zonas = [];
+    const nombre = document.getElementById('zNombre').value.trim();
+    const cantidad = parseInt(document.getElementById('zCantidad').value) || 0;
+    const desde = parseInt(document.getElementById('zDesde').value);
+    const hasta = parseInt(document.getElementById('zHasta').value);
+    const cantidadRango = parseInt(document.getElementById('zCantidadRango').value) || 0;
+    if(nombre){
+      i.produccion.zonas.push({id: uid('zn'), nombre, cantidadRequerida:cantidad});
+    }
+    if(desde && hasta && hasta>=desde){
+      for(let n=desde; n<=hasta; n++){
+        i.produccion.zonas.push({id: uid('zn'), nombre:'Piso '+n, cantidadRequerida:cantidadRango});
+      }
+    }
+    closeModal();
+    await guardarYRefrescar(i);
+  }
+  async function registrarAvance(instId){
+    const i = await inst(instId);
+    const trabCat = await App.Repo.catalogoTrabajadores();
+    const grupos = await App.Repo.catalogoGrupos();
+    const zonasOpts = (i.produccion.zonas||[]).map(z=>'<option value="'+z.id+'">'+esc(z.nombre)+'</option>').join('');
+    let asignadoOpts = '<option value="">Sin asignar</option>';
+    (i.personalFijoIds||[]).forEach(id=>{ const t=trabCat.find(x=>x.id===id); if(t) asignadoOpts += '<option value="trabajador|'+t.id+'|'+esc(t.nombre)+'">👤 '+esc(t.nombre)+'</option>'; });
+    (i.personalExtra||[]).forEach(p=>{ asignadoOpts += '<option value="trabajador|'+p.id+'|'+esc(p.nombre)+'">👤 '+esc(p.nombre)+'</option>'; });
+    grupos.forEach(g=>{ asignadoOpts += '<option value="grupo|'+g.id+'|'+esc(g.nombre)+'">👥 '+esc(g.nombre)+'</option>'; });
+    openModal('Registrar avance',
+      '<label>Zona / piso</label><select id="avZona">'+zonasOpts+'</select>'+
+      '<label>Cantidad instalada</label><input type="number" id="avCantidad" placeholder="Ej. 12">'+
+      '<label>Fecha</label><input type="date" id="avFecha" value="'+hoy()+'">'+
+      '<label>Grupo o trabajador responsable</label><select id="avAsignado">'+asignadoOpts+'</select>'+
+      '<label>Nota (opcional)</label><input type="text" id="avNota" placeholder="Ej. sin incidentes">'+
+      '<button class="btn-primary" onclick="App.Handlers._confirmarAvance(\''+instId+'\')">Guardar avance</button>'
+    );
+  }
+  async function _confirmarAvance(instId){
+    const zonaId = document.getElementById('avZona').value;
+    const cantidad = parseInt(document.getElementById('avCantidad').value) || 0;
+    const fecha = document.getElementById('avFecha').value || hoy();
+    const nota = document.getElementById('avNota').value.trim();
+    const asignado = _leerAsignadoGenerico('avAsignado');
+    if(!zonaId || !cantidad){ toast('Falta zona o cantidad'); return; }
+    const i = await inst(instId);
+    if(!i.avanceRegistros) i.avanceRegistros = [];
+    i.avanceRegistros.push({id: uid('av'), fecha, zonaId, cantidad, asignado, nota});
+    closeModal();
+    await guardarYRefrescar(i);
+  }
+  function _leerAsignadoGenerico(selectId){
+    const val = document.getElementById(selectId).value;
+    if(!val) return null;
+    const [tipo, id, nombre] = val.split('|');
+    return {tipo, id, nombre};
   }
 
   // ---- Bitácora diaria ----
@@ -1157,16 +1659,19 @@ App.Handlers = (function(){
 
   return {
     eliminarSub, guardarCotizacion,
+    agregarChecklistItem, _confirmarChecklistItem, cargarChecklistEstandar, toggleChecklistGeneral,
+    subirDocumento,
     limpiarFirma, generarActaPDF,
     agregarHerramientaPropia, _confirmarHerramientaPropia, toggleHerramientaPropia,
     agregarHerramientaSolicitar, _confirmarHerramientaSolicitar, toggleEstadoSolicitar,
     agregarHerramientaComprar, _confirmarHerramientaComprar,
     agregarMaterial, _confirmarMaterial, toggleMaterial,
     agregarTransporte, _confirmarTransporte, marcarEntregado,
-    agregarPersonalFijo, _confirmarPersonalFijo, _crearYAsignarTrabajador, quitarPersonalFijo,
+    agregarPersonalFijo, _confirmarPersonalFijo, _crearYAsignarTrabajador, quitarPersonalFijo, _confirmarGrupoFijo,
     agregarPersonalExtra, _confirmarPersonalExtra,
     checar,
-    agregarActividad, _confirmarActividad, completarActividad, _confirmarCompletar,
+    agregarActividad, _confirmarActividad, completarActividad, _confirmarCompletar, reasignarActividad, _confirmarReasignar,
+    configurarProduccion, _confirmarProduccion, agregarZona, _confirmarZona, registrarAvance, _confirmarAvance,
     agregarBitacora, _confirmarBitacora,
     agregarProblema, _confirmarProblema, toggleProblema,
     pasarACurso, marcarFinalizada,
@@ -1189,6 +1694,13 @@ App.Handlers.agregarTrabajadorGlobal = async function(){
   const rol = document.getElementById('pgRol').value.trim();
   if(!nombre){ App.UIHelpers.toast('Escribe un nombre'); return; }
   await App.Repo.agregarTrabajador(nombre, rol);
+  App.Views.personalGlobal();
+};
+App.Handlers.crearGrupo = async function(){
+  const nombre = document.getElementById('pgGrupoNombre').value.trim();
+  if(!nombre){ App.UIHelpers.toast('Ponle un nombre al grupo'); return; }
+  const miembros = Array.from(document.querySelectorAll('.chkMiembroGrupo:checked')).map(el=>el.value);
+  await App.Repo.agregarGrupo(nombre, miembros);
   App.Views.personalGlobal();
 };
 
@@ -1226,7 +1738,9 @@ App.Views.dashboard = async function(){
     const personalTotal = (inst.personalFijoIds||[]).length + (inst.personalExtra||[]).length;
     const stampClass = inst.estado==='curso'?'curso':(inst.estado==='final'?'final':'pendiente');
     const stampTxt = inst.estado==='curso'?'En curso':(inst.estado==='final'?'Finalizada':'Pendiente');
-    return '<div class="card" onclick="App.Router.abrirInstalacion(\''+inst.id+'\')">'+
+    const buscador = (inst.nombre+' '+(inst.cliente||'')+' '+(inst.ubicacion||'')).toLowerCase();
+    return '<div class="proyecto-wrap" data-search="'+esc(buscador)+'" data-problema="'+(abiertos?'1':'0')+'">'+
+    '<div class="card" onclick="App.Router.abrirInstalacion(\''+inst.id+'\')">'+
       '<div class="proyecto-top">'+
         '<div><div class="proyecto-nombre">'+esc(inst.nombre)+'</div>'+
         '<div class="proyecto-cliente">'+esc(inst.cliente||'Sin cliente')+'</div></div>'+
@@ -1238,7 +1752,7 @@ App.Views.dashboard = async function(){
         (abiertos? '<div class="meta-item">⚠️ <b>'+abiertos+'</b> problema(s)</div>' : '')+
       '</div>'+
       (inst.estado!=='pendiente' ? '<div class="progress-track"><div class="progress-fill '+(inst.estado==='final'?'done':'')+'" style="width:'+avance+'%"></div></div>' : '')+
-    '</div>';
+    '</div></div>';
   }
 
   const html =
@@ -1249,15 +1763,23 @@ App.Views.dashboard = async function(){
       '<button class="iconbtn" onclick="App.Router.abrirAjustes()">⚙️</button>'+
     '</div>'+
     '<div class="content">'+
+      (curso.length? '<div class="section-label">Accesos rápidos</div>'+
+        '<div style="display:flex; gap:8px; margin-bottom:14px;">'+
+          '<button class="btn-outline" style="margin:0; padding:12px 6px; font-size:11.5px;" onclick="App.Views.accesoRapido(\'checador\')">⏱️<br>Marcar hora</button>'+
+          '<button class="btn-outline" style="margin:0; padding:12px 6px; font-size:11.5px;" onclick="App.Views.accesoRapido(\'problema\')">⚠️<br>Reportar problema</button>'+
+          '<button class="btn-outline" style="margin:0; padding:12px 6px; font-size:11.5px;" onclick="App.Views.accesoRapido(\'bitacora\')">📝<br>Bitácora diaria</button>'+
+        '</div>' : '')+
+      '<input type="text" id="buscarProyecto" placeholder="Buscar por nombre, cliente o ciudad..." oninput="App.Views.filtrarProyectos(this.value)" style="margin-bottom:12px;">'+
       '<div class="kpi-row">'+
-        '<div class="kpi"><div class="num">'+curso.length+'</div><div class="lbl">Activas</div></div>'+
-        '<div class="kpi alert"><div class="num">'+conProblemas+'</div><div class="lbl">Con problemas</div></div>'+
-        '<div class="kpi"><div class="num">'+finalizadas.length+'</div><div class="lbl">Finalizadas</div></div>'+
+        '<div class="kpi" onclick="App.Views.filtrarProblemas(false)" style="cursor:pointer;"><div class="num">'+curso.length+'</div><div class="lbl">Activas</div></div>'+
+        '<div class="kpi alert" onclick="App.Views.filtrarProblemas(true)" style="cursor:pointer;"><div class="num">'+conProblemas+'</div><div class="lbl">Con problemas</div></div>'+
+        '<div class="kpi" onclick="App.Views.filtrarProblemas(false)" style="cursor:pointer;"><div class="num">'+finalizadas.length+'</div><div class="lbl">Finalizadas</div></div>'+
       '</div>'+
       (curso.length? '<div class="section-label">En curso</div>'+curso.map(tarjeta).join('') : '')+
       (pendientes.length? '<div class="section-label">Pendientes por salir</div>'+pendientes.map(tarjeta).join('') : '')+
       (finalizadas.length? '<div class="section-label">Finalizadas</div>'+finalizadas.map(tarjeta).join('') : '')+
       (!instalaciones.length? '<div class="empty">No tienes instalaciones todavía.<br>Toca el botón + para crear la primera.</div>' : '')+
+      '<div class="empty" id="sinResultados" style="display:none;">Sin resultados</div>'+
     '</div>'+
     '<button class="fab" onclick="App.Router.nuevaInstalacion()">+</button>'+
     '<div class="tabbar">'+
@@ -1266,6 +1788,59 @@ App.Views.dashboard = async function(){
       '<button class="tabbar-item" onclick="App.Router.abrirAjustes()">⚙️<div>Ajustes</div></button>'+
     '</div>';
   document.getElementById('app').innerHTML = html;
+};
+
+App.Views.filtrarProyectos = function(texto){
+  const t = texto.trim().toLowerCase();
+  let visibles = 0;
+  document.querySelectorAll('.proyecto-wrap').forEach(el=>{
+    const match = el.getAttribute('data-search').includes(t);
+    el.style.display = match ? '' : 'none';
+    if(match) visibles++;
+  });
+  const sinRes = document.getElementById('sinResultados');
+  if(sinRes) sinRes.style.display = (t && visibles===0) ? '' : 'none';
+};
+App.Views.filtrarProblemas = function(soloConProblemas){
+  let visibles = 0;
+  document.querySelectorAll('.proyecto-wrap').forEach(el=>{
+    const match = !soloConProblemas || el.getAttribute('data-problema')==='1';
+    el.style.display = match ? '' : 'none';
+    if(match) visibles++;
+  });
+  const buscador = document.getElementById('buscarProyecto');
+  if(buscador) buscador.value = '';
+  const sinRes = document.getElementById('sinResultados');
+  if(sinRes) sinRes.style.display = visibles===0 ? '' : 'none';
+};
+
+App.Views.accesoRapido = async function(tipo){
+  const {esc, openModal, closeModal} = App.UIHelpers;
+  const todas = await App.Repo.listar();
+  const curso = todas.filter(i=>i.estado==='curso');
+  if(!curso.length){ App.UIHelpers.toast('No tienes instalaciones en curso'); return; }
+
+  async function ejecutar(instId){
+    closeModal();
+    if(tipo==='checador'){
+      await App.Router.abrirInstalacion(instId);
+      await App.Router.cambiarFase('durante');
+    } else if(tipo==='problema'){
+      await App.Router.abrirInstalacion(instId);
+      App.Handlers.agregarProblema(instId);
+    } else if(tipo==='bitacora'){
+      await App.Router.abrirInstalacion(instId);
+      App.Handlers.agregarBitacora(instId);
+    }
+  }
+
+  if(curso.length===1){
+    ejecutar(curso[0].id);
+    return;
+  }
+  const opciones = curso.map(i=>'<button class="btn-outline" onclick="App.Views._ejecutarAccesoRapido(\''+tipo+'\',\''+i.id+'\')">'+esc(i.nombre)+'</button>').join('');
+  openModal('¿En qué instalación?', opciones);
+  App.Views._ejecutarAccesoRapido = (t,id)=> ejecutar(id);
 };
 
 /* ===================== ROUTER ===================== */
@@ -1322,6 +1897,12 @@ App.Router = (function(){
   function abrirPersonalGlobal(){
     App.Views.personalGlobal();
   }
+  function abrirTareas(tipo, id, nombre){
+    App.Views.tareas(tipo, id, nombre);
+  }
+  function abrirHorasGlobales(){
+    App.Views.horasGlobales();
+  }
 
   async function abrirActa(id){
     instActualId = id;
@@ -1331,7 +1912,7 @@ App.Router = (function(){
 
   return {
     irDashboard, nuevaInstalacion, _crearInstalacion, abrirInstalacion,
-    cambiarFase, instActual, refrescar, abrirAjustes, abrirPersonalGlobal, abrirActa
+    cambiarFase, instActual, refrescar, abrirAjustes, abrirPersonalGlobal, abrirActa, abrirTareas, abrirHorasGlobales
   };
 })();
 
