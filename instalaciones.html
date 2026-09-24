@@ -8,137 +8,146 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1F2421">
 <title>Instalaciones</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231F2421'/%3E%3Ctext x='50' y='62' font-size='46' fill='%23E8590C' text-anchor='middle' font-family='Arial' font-weight='bold'%3EI%3C/text%3E%3C/svg%3E">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231F2421'/%3E%3Ctext x='50' y='62' font-size='46' fill='%23E8590C' text-anchor='middle' font-family='Arial' font-weight='bold'%3EI%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2322262A'/%3E%3Ctext x='50' y='64' font-size='46' fill='%232FD9CE' text-anchor='middle' font-family='Arial' font-weight='bold'%3EI%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2322262A'/%3E%3Ctext x='50' y='64' font-size='46' fill='%232FD9CE' text-anchor='middle' font-family='Arial' font-weight='bold'%3EI%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
-  --concreto:#F4F2ED; --concreto-osc:#E7E3D9; --ink:#1F2421; --ink-suave:#565f5a;
-  --naranja:#E8590C; --naranja-osc:#C4490A; --acero:#2B4C6F; --acero-claro:#DCE6EE;
-  --verde:#4C7A3E; --verde-claro:#E3EEDF; --rojo:#C1392B; --rojo-claro:#F6E1DE;
-  --borde:#D8D3C7; --white:#FFFFFF;
+  --fondo:#22262A; --fondo-alt:#333934; --texto:#F5F6F4; --texto-suave:#9AA39C;
+  --acento:#2FD9CE; --acento-fuerte:#1FBDB2; --info:#7C9CBF; --info-fondo:#2A3742;
+  --exito:#4ADE80; --exito-fondo:#1F3A2A; --peligro:#FF6B6B; --peligro-fondo:#3D2426;
+  --borde:#3A3F3B; --superficie:#2B302E;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{margin:0; padding:0; background:var(--concreto); color:var(--ink); font-family:'Inter',sans-serif;
+html,body{margin:0; padding:0; background:var(--fondo); color:var(--texto); font-family:'Inter',sans-serif;
   -webkit-text-size-adjust:100%; overscroll-behavior-y:none;}
 input,select,textarea,button{font-family:inherit; font-size:16px;} /* evita auto-zoom iOS */
 button{cursor:pointer;}
 button svg{width:18px; height:18px;} /* evita SVG a tama\u00f1o gigante en Safari */
 #app{max-width:520px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:86px;}
 
-.topbar{padding:calc(env(safe-area-inset-top) + 16px) 20px 16px; background:var(--ink); color:var(--concreto); position:relative;}
-.topbar .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--naranja); font-weight:600;}
-.topbar h1{font-family:'Oswald',sans-serif; font-size:24px; font-weight:600; margin:4px 0 0;}
-.topbar .sub{font-size:12.5px; color:#B9C2BD; margin-top:4px;}
-.iconbtn{position:absolute; top:calc(env(safe-area-inset-top) + 16px); right:18px; background:none; border:none; color:var(--concreto); font-size:20px;}
+.topbar{padding:calc(env(safe-area-inset-top) + 16px) 20px 16px; background:var(--superficie); color:var(--texto); border-bottom:1px solid var(--borde); position:relative;}
+.topbar .eyebrow{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--acento); font-weight:600;}
+.topbar h1{font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:600; margin:4px 0 0;}
+.topbar .sub{font-size:12.5px; color:var(--texto-suave); margin-top:4px;}
+.iconbtn{position:absolute; top:calc(env(safe-area-inset-top) + 16px); right:18px; background:none; border:none; color:var(--texto); font-size:20px;}
 
 .content{padding:16px 16px 6px;}
-.section-label{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-suave); margin:16px 0 10px; display:flex; align-items:center; gap:8px;}
+.section-label{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--texto-suave); margin:16px 0 10px; display:flex; align-items:center; gap:8px;}
 .section-label::after{content:''; flex:1; height:1px; background:var(--borde);}
 
 .kpi-row{display:flex; gap:10px;}
-.kpi{flex:1; background:var(--white); border:1px solid var(--borde); border-radius:10px; padding:12px 10px;}
-.kpi .num{font-family:'Oswald',sans-serif; font-size:22px; font-weight:600; line-height:1;}
-.kpi .lbl{font-size:10.5px; color:var(--ink-suave); margin-top:4px; font-weight:500;}
-.kpi.alert .num{color:var(--naranja-osc);}
+.kpi{flex:1 1 28%; background:var(--superficie); border:1px solid var(--borde); border-radius:10px; padding:10px 6px; text-align:center;}
+.kpi .num{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:600; line-height:1;}
+.kpi .lbl{font-size:10.5px; color:var(--texto-suave); margin-top:4px; font-weight:500;}
+.kpi.alert .num{color:var(--acento-fuerte);}
+.kpi-action{background:var(--info-fondo); border-color:var(--acento); cursor:pointer;}
+.kpi-action .lbl{color:var(--texto); font-weight:600;}
 
-.card{background:var(--white); border:1px solid var(--borde); border-radius:12px; padding:14px 14px 12px; margin-bottom:10px;}
+.card{background:var(--superficie); border:1px solid var(--borde); border-radius:12px; padding:14px 14px 12px; margin-bottom:10px;}
+.card.st-curso{border-left:3px solid var(--acento);}
+.card.st-pendiente{border-left:3px solid var(--info);}
+.card.st-final{border-left:3px solid var(--exito);}
+.card.st-riesgo{border-left:3px solid var(--peligro);}
 .card:active{transform:scale(0.99);}
 .proyecto-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
-.proyecto-nombre{font-family:'Oswald',sans-serif; font-size:17px; font-weight:600;}
-.proyecto-cliente{font-size:12.5px; color:var(--ink-suave); margin-top:2px;}
+.proyecto-nombre{font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600;}
+.proyecto-cliente{font-size:12.5px; color:var(--texto-suave); margin-top:2px;}
 .proyecto-meta{display:flex; gap:14px; margin-top:12px; flex-wrap:wrap;}
-.meta-item{font-size:11.5px; color:var(--ink-suave);}
-.meta-item b{color:var(--ink); font-weight:600;}
-.progress-track{height:5px; background:var(--concreto-osc); border-radius:3px; margin-top:10px; overflow:hidden;}
-.progress-fill{height:100%; background:var(--naranja); border-radius:3px;}
-.progress-fill.done{background:var(--verde);}
+.meta-item{font-size:11.5px; color:var(--texto-suave);}
+.meta-item b{color:var(--texto); font-weight:600;}
+.progress-track{height:5px; background:var(--fondo-alt); border-radius:3px; margin-top:10px; overflow:hidden;}
+.progress-fill{height:100%; background:var(--acento); border-radius:3px;}
+.progress-fill.done{background:var(--exito);}
 
-.stamp{display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; padding:4px 9px; border-radius:3px; border:1.5px dashed currentColor; white-space:nowrap;}
-.stamp.pendiente{color:var(--acero); background:var(--acero-claro); border-color:var(--acero);}
-.stamp.curso{color:var(--naranja-osc); background:#FCE9DC; border-color:var(--naranja);}
-.stamp.final{color:var(--verde); background:var(--verde-claro); border-color:var(--verde);}
+.stamp{display:inline-flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; padding:5px 10px; border-radius:20px; white-space:nowrap;}
+.stamp.pendiente{color:var(--info); background:var(--info-fondo);}
+.stamp.curso{color:var(--fondo); background:var(--acento);}
+.stamp.final{color:var(--exito); background:var(--exito-fondo);}
+.stamp.riesgo{color:var(--peligro); background:var(--peligro-fondo);}
 
-.fab{position:fixed; bottom:96px; right:calc(50% - 260px + 20px); width:56px; height:56px; border-radius:16px; background:var(--naranja); display:flex; align-items:center; justify-content:center; color:white; font-size:28px; border:none; box-shadow:0 8px 20px rgba(232,89,12,0.4); z-index:20;}
+.dot-live{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--acento); box-shadow:0 0 6px var(--acento); margin-right:5px;}
+
+.fab{position:fixed; bottom:96px; right:calc(50% - 260px + 20px); width:56px; height:56px; border-radius:16px; background:var(--acento); display:flex; align-items:center; justify-content:center; color:var(--fondo); font-size:28px; border:none; box-shadow:0 8px 20px rgba(47,217,206,0.35); z-index:20;}
 @media (max-width:560px){.fab{right:20px;}}
 
-.tabbar{position:fixed; bottom:0; left:0; right:0; max-width:520px; margin:0 auto; height:calc(70px + env(safe-area-inset-bottom)); background:var(--white); border-top:1px solid var(--borde); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:20;}
-.tabbar-item{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:10px; font-weight:600; color:var(--ink-suave); background:none; border:none;}
-.tabbar-item.active{color:var(--naranja-osc);}
+.tabbar{position:fixed; bottom:0; left:0; right:0; max-width:520px; margin:0 auto; height:calc(70px + env(safe-area-inset-bottom)); background:var(--superficie); border-top:1px solid var(--borde); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:20;}
+.tabbar-item{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:10px; font-weight:600; color:var(--texto-suave); background:none; border:none;}
+.tabbar-item.active{color:var(--acento-fuerte);}
 
-.back{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--naranja); font-weight:600; background:none; border:none; padding:0;}
-.det-title{font-family:'Oswald',sans-serif; font-size:22px; font-weight:600; margin:6px 0 2px;}
-.det-cliente{font-size:13px; color:var(--ink-suave);}
+.back{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--acento); font-weight:600; background:none; border:none; padding:0;}
+.det-title{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:600; margin:6px 0 2px;}
+.det-cliente{font-size:13px; color:var(--texto-suave);}
 
-.phase-tabs{display:flex; gap:6px; margin:16px 16px 0; background:var(--concreto-osc); padding:4px; border-radius:10px;}
-.phase-tab{flex:1; text-align:center; padding:9px 4px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:var(--ink-suave); background:none; border:none;}
-.phase-tab.active{background:var(--ink); color:var(--concreto);}
+.phase-tabs{display:flex; gap:6px; margin:16px 16px 0; background:var(--fondo-alt); padding:4px; border-radius:10px;}
+.phase-tab{flex:1; text-align:center; padding:9px 4px; border-radius:7px; font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:var(--texto-suave); background:none; border:none;}
+.phase-tab.active{background:var(--acento); color:var(--fondo);}
 
-.card h3{font-family:'Oswald',sans-serif; font-size:15px; font-weight:600; margin:0 0 10px; display:flex; align-items:center; justify-content:space-between;}
-.card h3 span.count{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-suave); font-weight:500;}
+.card h3{font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; margin:0 0 10px; display:flex; align-items:center; justify-content:space-between;}
+.card h3 span.count{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--texto-suave); font-weight:500;}
 
-.check-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #EEEAE1; font-size:13.5px;}
+.check-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--borde); font-size:13.5px;}
 .check-row:last-child{border-bottom:none;}
 .checkbox{width:20px; height:20px; border-radius:5px; border:2px solid var(--borde); flex-shrink:0; background:none; position:relative; padding:0;}
-.checkbox.on{background:var(--verde); border-color:var(--verde);}
+.checkbox.on{background:var(--exito); border-color:var(--exito);}
 .checkbox.on::after{content:'\2713'; color:white; font-size:12px; position:absolute; top:-1px; left:2.5px; font-weight:700;}
 .check-label{flex:1;}
-.check-del{background:none; border:none; color:var(--rojo); font-size:16px; padding:2px 6px;}
+.check-del{background:none; border:none; color:var(--peligro); font-size:16px; padding:2px 6px;}
 .check-tag{font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:5px; white-space:nowrap;}
-.check-tag.falta{background:var(--rojo-claro); color:var(--rojo);}
-.check-tag.ok{background:var(--verde-claro); color:var(--verde);}
+.check-tag.falta{background:var(--peligro-fondo); color:var(--peligro);}
+.check-tag.ok{background:var(--exito-fondo); color:var(--exito);}
 
 input[type=text],input[type=number],input[type=date],input[type=time],textarea,select{
-  width:100%; padding:10px 11px; border:1px solid var(--borde); border-radius:8px; background:var(--concreto); color:var(--ink); margin-bottom:8px;
+  width:100%; padding:10px 11px; border:1px solid var(--borde); border-radius:8px; background:var(--fondo); color:var(--texto); margin-bottom:8px;
 }
 textarea{min-height:70px; resize:vertical;}
-label{font-size:11.5px; font-weight:600; color:var(--ink-suave); display:block; margin-bottom:4px;}
+label{font-size:11.5px; font-weight:600; color:var(--texto-suave); display:block; margin-bottom:4px;}
 
-.btn-primary{display:block; text-align:center; background:var(--naranja); color:white; font-weight:700; padding:13px; border-radius:10px; font-size:14px; margin-top:4px; border:none; width:100%;}
-.btn-outline{display:block; text-align:center; background:transparent; color:var(--ink); font-weight:600; padding:12px; border-radius:10px; font-size:13.5px; border:1.5px solid var(--borde); width:100%; margin-top:8px;}
-.btn-danger{color:var(--rojo); border-color:var(--rojo-claro);}
+.btn-primary{display:block; text-align:center; background:var(--acento); color:var(--fondo); font-weight:700; padding:13px; border-radius:10px; font-size:14px; margin-top:4px; border:none; width:100%;}
+.btn-outline{display:block; text-align:center; background:transparent; color:var(--texto); font-weight:600; padding:12px; border-radius:10px; font-size:13.5px; border:1.5px solid var(--borde); width:100%; margin-top:8px;}
+.btn-danger{color:var(--peligro); border-color:var(--peligro-fondo);}
 
-.clock-widget{background:var(--ink); border-radius:12px; padding:18px; text-align:center; margin-bottom:12px;}
-.clock-time{font-family:'IBM Plex Mono',monospace; font-size:34px; color:var(--concreto); font-weight:600; letter-spacing:1px;}
-.clock-label{font-size:11.5px; color:#9DA69F; margin-top:2px; letter-spacing:0.5px;}
-.clock-btn{margin-top:14px; background:var(--naranja); color:white; border:none; border-radius:9px; padding:12px 0; width:100%; font-weight:700; font-size:14px;}
+.clock-widget{background:var(--superficie); border:1px solid var(--borde); border-radius:12px; padding:18px; text-align:center; margin-bottom:12px;}
+.clock-time{font-family:'JetBrains Mono',monospace; font-size:34px; color:var(--acento); font-weight:600; letter-spacing:1px;}
+.clock-label{font-size:11.5px; color:var(--texto-suave); margin-top:2px; letter-spacing:0.5px;}
+.clock-btn{margin-top:14px; background:var(--acento); color:var(--fondo); border:none; border-radius:9px; padding:12px 0; width:100%; font-weight:700; font-size:14px;}
 
-.worker-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #EEEAE1;}
+.worker-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--borde);}
 .worker-row:last-child{border-bottom:none;}
-.avatar{width:32px; height:32px; border-radius:8px; background:var(--acero-claro); color:var(--acero); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; font-family:'Oswald',sans-serif; flex-shrink:0;}
-.avatar.extra{background:var(--concreto-osc); color:var(--ink-suave);}
+.avatar{width:32px; height:32px; border-radius:8px; background:var(--info-fondo); color:var(--info); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; font-family:'Space Grotesk',sans-serif; flex-shrink:0;}
+.avatar.extra{background:var(--fondo-alt); color:var(--texto-suave);}
 .worker-name{font-size:13.5px; font-weight:600; flex:1;}
-.worker-hrs{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-suave);}
+.worker-hrs{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--texto-suave);}
 .worker-status{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
-.worker-status.in{background:var(--verde);}
+.worker-status.in{background:var(--exito);}
 .worker-status.out{background:var(--borde);}
 
-.problema-card{border-left:3px solid var(--rojo); padding:10px 12px; background:var(--rojo-claro); border-radius:0 8px 8px 0; margin-bottom:8px;}
-.problema-card.resuelto{border-left-color:var(--verde); background:var(--verde-claro);}
-.problema-top{display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; color:var(--rojo);}
-.problema-card.resuelto .problema-top{color:var(--verde);}
-.problema-txt{font-size:12.5px; color:var(--ink); margin-top:4px; line-height:1.4;}
+.problema-card{border-left:3px solid var(--peligro); padding:10px 12px; background:var(--peligro-fondo); border-radius:0 8px 8px 0; margin-bottom:8px;}
+.problema-card.resuelto{border-left-color:var(--exito); background:var(--exito-fondo);}
+.problema-top{display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; color:var(--peligro);}
+.problema-card.resuelto .problema-top{color:var(--exito);}
+.problema-txt{font-size:12.5px; color:var(--texto); margin-top:4px; line-height:1.4;}
 
-.bitacora-entry{border-left:3px solid var(--acero); padding:8px 12px; background:var(--acero-claro); border-radius:0 8px 8px 0; margin-bottom:8px;}
-.bitacora-fecha{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--acero); font-weight:600;}
+.bitacora-entry{border-left:3px solid var(--info); padding:8px 12px; background:var(--info-fondo); border-radius:0 8px 8px 0; margin-bottom:8px;}
+.bitacora-fecha{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--info); font-weight:600;}
 .bitacora-txt{font-size:12.5px; margin-top:4px; line-height:1.4;}
 
-.ai-tag{font-size:10.5px; color:var(--acero); margin-top:5px; display:flex; align-items:center; gap:5px;}
+.ai-tag{font-size:10.5px; color:var(--info); margin-top:5px; display:flex; align-items:center; gap:5px;}
 .envio-card{border:1px solid var(--borde); border-radius:9px; padding:11px; margin-bottom:9px;}
 
 .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; display:flex; align-items:flex-end;}
-.modal-sheet{background:var(--concreto); width:100%; max-width:520px; margin:0 auto; border-radius:18px 18px 0 0; max-height:88vh; overflow-y:auto; padding:20px 18px calc(24px + env(safe-area-inset-bottom));}
-.modal-title{font-family:'Oswald',sans-serif; font-size:19px; font-weight:600; margin-bottom:14px;}
+.modal-sheet{background:var(--fondo); width:100%; max-width:520px; margin:0 auto; border-radius:18px 18px 0 0; max-height:88vh; overflow-y:auto; padding:20px 18px calc(24px + env(safe-area-inset-bottom));}
+.modal-title{font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:600; margin-bottom:14px;}
 
-.sig-pad{background:var(--concreto); border:1.5px dashed var(--borde); border-radius:8px; height:130px; width:100%; touch-action:none; display:block;}
+.sig-pad{background:#F5F6F4; border:1.5px dashed var(--borde); border-radius:8px; height:130px; width:100%; touch-action:none; display:block;}
 .sig-actions{display:flex; gap:8px; margin-top:6px;}
 .sig-actions button{flex:1;}
 
-.empty{text-align:center; padding:40px 20px; color:var(--ink-suave); font-size:13px;}
+.empty{text-align:center; padding:40px 20px; color:var(--texto-suave); font-size:13px;}
 
-.toast{position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--concreto); padding:10px 18px; border-radius:20px; font-size:13px; z-index:200; box-shadow:0 6px 16px rgba(0,0,0,0.25);}
+.toast{position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--texto); color:var(--fondo); padding:10px 18px; border-radius:20px; font-size:13px; z-index:200; box-shadow:0 6px 16px rgba(0,0,0,0.25);}
 </style>
 </head>
 <body>
@@ -235,6 +244,7 @@ App.Repo = (function(){
       cliente: data.cliente || '',
       ubicacion: data.ubicacion || '',
       fechaInicio: data.fechaInicio || hoy(),
+      fechaFinPlan: data.fechaFinPlan || '',
       cotizacionRef: '',
       estado: 'pendiente', // pendiente | curso | final
       herramientasPropias: [], // {id,nombre,llevar:bool}
@@ -245,7 +255,7 @@ App.Repo = (function(){
       personalFijoIds: [], // ids de App.Repo trabajadores catálogo
       personalExtra: [], // {id,nombre,ciudad}
       registroHoras: [], // {id, trabajadorId, esExtra:bool, fecha, entrada, salida}
-      cronograma: [], // {id,nombre,horasEstimadas,origen:'manual'|'ia_historial'|'ia_general',horasReales,asignado}
+      cronograma: [], // {id,nombre,fechaInicio,fechaFin,horasEstimadas,origen,horasReales,completada,asignado}
       produccion: { unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas: [] }, // zonas: {id,nombre,cantidadRequerida}
       avanceRegistros: [], // {id,fecha,zonaId,cantidad,asignado:{tipo,id,nombre},nota}
       documentos: [], // {id,nombre,tipo,dataUrl,fecha}
@@ -352,6 +362,69 @@ App.Repo = (function(){
     return {totalInstalado, porZona, instaladoSemana, pct, unidadTotal};
   }
 
+  async function horasDetalladas(){
+    const todas = await listar();
+    const cat = await catalogoTrabajadores();
+    const cfg = await config('miNombre');
+    const miNombre = cfg ? cfg.value : 'Isaac Zamora';
+    const acumulado = {};
+    todas.forEach(inst=>{
+      (inst.registroHoras||[]).forEach(r=>{
+        if(!r.entrada || !r.salida) return;
+        const [eh,em]=r.entrada.split(':').map(Number);
+        const [sh,sm]=r.salida.split(':').map(Number);
+        const min = (sh*60+sm)-(eh*60+em);
+        if(min<=0) return;
+        let key, nombre;
+        if(r.trabajadorId==='YO'){ key='YO'; nombre=miNombre+' (tú)'; }
+        else if(r.esExtra){
+          const p = (inst.personalExtra||[]).find(x=>x.id===r.trabajadorId);
+          key = 'extra|'+r.trabajadorId; nombre = p?p.nombre:'—';
+        } else {
+          const t = cat.find(x=>x.id===r.trabajadorId);
+          key = 'fijo|'+r.trabajadorId; nombre = t?t.nombre:'—';
+        }
+        if(!acumulado[key]) acumulado[key] = {nombre, minutos:0, entradas:[]};
+        acumulado[key].minutos += min;
+        acumulado[key].entradas.push({fecha:r.fecha, proyecto:inst.nombre, entrada:r.entrada, salida:r.salida, minutos:min});
+      });
+    });
+    Object.values(acumulado).forEach(p=> p.entradas.sort((a,b)=> a.fecha.localeCompare(b.fecha)));
+    return acumulado;
+  }
+
+  const STORES = ['instalaciones','trabajadores','herramientasCatalogo','actividadesCatalogo','gruposTrabajo','config'];
+
+  async function exportarTodo(){
+    const data = {version:1, fecha:new Date().toISOString(), stores:{}};
+    for(const nombre of STORES){
+      data.stores[nombre] = await S.getAll(nombre);
+    }
+    return data;
+  }
+
+  async function importarTodo(data){
+    if(!data || !data.stores) throw new Error('Formato de respaldo inválido');
+    for(const nombre of STORES){
+      const items = data.stores[nombre];
+      if(Array.isArray(items)){
+        for(const item of items){
+          await S.put(nombre, item);
+        }
+      }
+    }
+  }
+
+  async function reiniciarTodo(){
+    for(const nombre of STORES){
+      const items = await S.getAll(nombre);
+      for(const item of items){
+        const key = item.id || item.key;
+        if(key) await S.delete(nombre, key);
+      }
+    }
+  }
+
   return {
     nuevaInstalacion, guardar, obtener, listar, eliminar,
     catalogoTrabajadores, agregarTrabajador,
@@ -360,7 +433,8 @@ App.Repo = (function(){
     catalogoGrupos, agregarGrupo, guardarGrupo, eliminarGrupo, tareasDe,
     config, setConfig,
     calcularAvance, totalHoras, fmtMinutos,
-    calcularProduccion, numSemanaISO
+    calcularProduccion, numSemanaISO, horasDetalladas,
+    exportarTodo, importarTodo, reiniciarTodo
   };
 })();
 
@@ -427,31 +501,109 @@ App.IA = (function(){
 App.Charts = (function(){
   function esc(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  function barrasCronograma(actividades){
-    if(!actividades.length) return '';
-    const max = Math.max(...actividades.map(a=> Math.max(a.horasEstimadas||0, a.horasReales||0)), 1);
-    const filas = actividades.map(a=>{
-      const wEst = Math.round((a.horasEstimadas||0)/max*100);
-      const wReal = a.horasReales!=null ? Math.round((a.horasReales/max)*100) : 0;
-      return '<div style="margin-bottom:10px;">'+
-        '<div style="font-size:11.5px; font-weight:600; margin-bottom:3px;">'+esc(a.nombre)+'</div>'+
-        '<div style="background:var(--concreto-osc); border-radius:5px; height:10px; overflow:hidden; margin-bottom:2px;">'+
-          '<div style="background:var(--acero); height:100%; width:'+wEst+'%; border-radius:5px;"></div>'+
+  function diasEntre(a,b){
+    const da = new Date(a+'T00:00:00'), db = new Date(b+'T00:00:00');
+    return Math.round((db-da)/(24*3600*1000));
+  }
+  function estadoActividad(a, hoyStr){
+    if(a.completada) return 'completada';
+    if(!a.fechaFin) return 'sinfecha';
+    if(hoyStr > a.fechaFin) return 'atrasada';
+    if(hoyStr >= a.fechaInicio) return 'encurso';
+    return 'pendiente';
+  }
+  const COLOR_ESTADO = {completada:'var(--exito)', atrasada:'var(--peligro)', encurso:'var(--acento)', pendiente:'var(--texto-suave)', sinfecha:'var(--texto-suave)'};
+  const LABEL_ESTADO = {completada:'Completada', atrasada:'Atrasada', encurso:'En curso', pendiente:'Pendiente', sinfecha:'Sin fecha'};
+
+  function calcularRiesgo(inst){
+    const acts = inst.cronograma||[];
+    const hoyStr = new Date().toISOString().slice(0,10);
+    const conFecha = acts.filter(a=>a.fechaInicio && a.fechaFin);
+    const atrasadas = conFecha.filter(a=> !a.completada && hoyStr>a.fechaFin).length;
+    let enRiesgoPlazo = false, finMasTardio = null;
+    if(conFecha.length && inst.fechaFinPlan){
+      finMasTardio = conFecha.reduce((max,a)=> a.fechaFin>max?a.fechaFin:max, conFecha[0].fechaFin);
+      enRiesgoPlazo = finMasTardio > inst.fechaFinPlan;
+    }
+    return {enRiesgo: atrasadas>0 || enRiesgoPlazo, atrasadas, enRiesgoPlazo, finMasTardio, finProyecto: inst.fechaFinPlan||null};
+  }
+
+  function timelineCronograma(inst){
+    const acts = (inst.cronograma||[]).slice();
+    if(!acts.length) return {html:'', feasibilidad:null};
+    const hoyStr = new Date().toISOString().slice(0,10);
+    const conFecha = acts.filter(a=>a.fechaInicio && a.fechaFin).sort((a,b)=>a.fechaInicio.localeCompare(b.fechaInicio));
+    const sinFecha = acts.filter(a=>!(a.fechaInicio && a.fechaFin));
+    const riesgo = calcularRiesgo(inst);
+    const feasibilidad = (conFecha.length && (inst.fechaFinPlan || riesgo.atrasadas>0)) ? riesgo : null;
+    let html = '<div style="position:relative; padding-left:20px;">';
+    html += '<div style="position:absolute; left:5px; top:6px; bottom:6px; width:2px; background:var(--borde);"></div>';
+    conFecha.forEach(a=>{
+      const estado = estadoActividad(a, hoyStr);
+      const c = COLOR_ESTADO[estado];
+      html += '<div style="position:relative; margin-bottom:16px;">'+
+        '<div style="position:absolute; left:-20px; top:2px; width:11px; height:11px; border-radius:50%; background:'+c+';"></div>'+
+        '<div style="display:flex; justify-content:space-between; align-items:baseline;">'+
+          '<div style="font-size:13px; font-weight:600;">'+esc(a.nombre)+'</div>'+
+          '<span style="font-family:\'JetBrains Mono\',monospace; font-size:9.5px; font-weight:700; color:'+c+';">'+LABEL_ESTADO[estado].toUpperCase()+'</span>'+
         '</div>'+
-        (a.horasReales!=null ? '<div style="background:var(--concreto-osc); border-radius:5px; height:10px; overflow:hidden;">'+
-          '<div style="background:'+(a.horasReales>a.horasEstimadas?'var(--rojo)':'var(--verde)')+'; height:100%; width:'+wReal+'%; border-radius:5px;"></div>'+
-        '</div>' : '')+
-        '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:10px; color:var(--ink-suave); margin-top:2px;">'+
-          'Est: '+a.horasEstimadas+'h'+(a.horasReales!=null? ' · Real: '+a.horasReales+'h':'')+
+        '<div style="font-family:\'JetBrains Mono\',monospace; font-size:10.5px; color:var(--texto-suave); margin-top:2px;">'+
+          fmtFecha(a.fechaInicio)+' → '+fmtFecha(a.fechaFin)+(a.horasReales!=null? ' · real '+a.horasReales+'h':' · '+a.horasEstimadas+'h est.')+
+        '</div>'+
+        (a.asignado? '<div style="font-size:11px; color:var(--info); margin-top:2px;">'+(a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre)+'</div>':'')+
+        '<div style="display:flex; gap:8px; margin-top:6px;">'+
+          '<button class="btn-outline" style="margin:0; padding:5px 9px; font-size:10.5px;" onclick="App.Handlers.reasignarActividad(\''+inst.id+'\',\''+a.id+'\')">Reasignar</button>'+
+          (!a.completada? '<button class="btn-outline" style="margin:0; padding:5px 9px; font-size:10.5px;" onclick="App.Handlers.completarActividad(\''+inst.id+'\',\''+a.id+'\')">Completar</button>':'')+
+          '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'cronograma\',\''+a.id+'\')">✕</button>'+
         '</div>'+
       '</div>';
+    });
+    html += '</div>';
+    if(sinFecha.length){
+      html += '<div style="font-size:10.5px; color:var(--texto-suave); margin:4px 0 6px;">Sin fechas asignadas:</div>';
+      sinFecha.forEach(a=>{
+        html += '<div class="envio-card">'+
+          '<div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600;"><span>'+esc(a.nombre)+'</span><span style="color:var(--texto-suave); font-weight:500;">'+a.horasEstimadas+'h est.</span></div>'+
+          (a.asignado? '<div style="font-size:11px; color:var(--info); margin-top:2px;">'+(a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre)+'</div>':'')+
+          '<div style="display:flex; gap:8px; margin-top:6px;">'+
+            '<button class="btn-outline" style="margin:0; padding:5px 9px; font-size:10.5px;" onclick="App.Handlers.reasignarActividad(\''+inst.id+'\',\''+a.id+'\')">Reasignar</button>'+
+            (!a.completada? '<button class="btn-outline" style="margin:0; padding:5px 9px; font-size:10.5px;" onclick="App.Handlers.completarActividad(\''+inst.id+'\',\''+a.id+'\')">Completar</button>':'')+
+            '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'cronograma\',\''+a.id+'\')">✕</button>'+
+          '</div>'+
+        '</div>';
+      });
+    }
+    return {html, feasibilidad};
+  }
+
+  function turnoBarra(entrada, salida){
+    // escala visible 6:00 a 20:00 (14 horas)
+    const INICIO=6, FIN=20, RANGO=FIN-INICIO;
+    function pct(hhmm){
+      const [h,m]=hhmm.split(':').map(Number);
+      return Math.min(Math.max((h+m/60-INICIO)/RANGO*100, 0), 100);
+    }
+    const left = pct(entrada);
+    const right = salida ? pct(salida) : 100;
+    const width = Math.max(right-left, 2);
+    return '<div style="position:relative; height:8px; background:var(--fondo-alt); border-radius:4px; margin:4px 0;">'+
+      '<div style="position:absolute; left:'+left+'%; width:'+width+'%; height:100%; background:'+(salida?'var(--acento)':'var(--exito)')+'; border-radius:4px;"></div>'+
+    '</div>';
+  }
+
+  function turnosPorDia(entradas, limite){
+    const lista = entradas.slice().reverse().slice(0, limite||7);
+    if(!lista.length) return '<div class="empty" style="padding:14px 0;">Sin turnos registrados</div>';
+    return lista.map(e=>{
+      const h = Math.floor(e.minutos/60), m = e.minutos%60;
+      return '<div style="margin-bottom:10px;">'+
+        '<div style="display:flex; justify-content:space-between; font-size:11.5px;">'+
+          '<span style="font-weight:600;">'+fmtFecha(e.fecha)+'</span>'+
+          '<span style="font-family:\'JetBrains Mono\',monospace; color:var(--texto-suave);">'+e.entrada+' – '+e.salida+' · '+h+'h '+m+'m</span>'+
+        '</div>'+
+        turnoBarra(e.entrada, e.salida)+
+      '</div>';
     }).join('');
-    return '<div style="margin-bottom:14px;">'+filas+
-      '<div style="font-size:10px; color:var(--ink-suave); display:flex; gap:12px;">'+
-        '<span>▬ <span style="color:var(--acero);">Estimado</span></span>'+
-        '<span>▬ <span style="color:var(--verde);">Real (a tiempo)</span></span>'+
-        '<span>▬ <span style="color:var(--rojo);">Real (excedido)</span></span>'+
-      '</div></div>';
   }
 
   function barrasHoras(datos){
@@ -462,15 +614,15 @@ App.Charts = (function(){
       const horas = Math.floor(d.minutos/60), mins = d.minutos%60;
       return '<div style="margin-bottom:9px;">'+
         '<div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:3px;">'+
-          '<span>'+esc(d.nombre)+'</span><span style="font-family:\'IBM Plex Mono\',monospace; color:var(--ink-suave);">'+horas+'h '+mins+'m</span>'+
+          '<span>'+esc(d.nombre)+'</span><span style="font-family:\'JetBrains Mono\',monospace; color:var(--texto-suave);">'+horas+'h '+mins+'m</span>'+
         '</div>'+
-        '<div style="background:var(--concreto-osc); border-radius:5px; height:12px; overflow:hidden;">'+
-          '<div style="background:var(--naranja); height:100%; width:'+w+'%; border-radius:5px;"></div>'+
+        '<div style="background:var(--fondo-alt); border-radius:5px; height:12px; overflow:hidden;">'+
+          '<div style="background:var(--acento); height:100%; width:'+w+'%; border-radius:5px;"></div>'+
         '</div></div>';
     }).join('');
   }
 
-  return {barrasCronograma, barrasHoras};
+  return {timelineCronograma, barrasHoras, turnosPorDia, turnoBarra, calcularRiesgo};
 })();
 
 /* ===================== UI HELPERS ===================== */
@@ -507,6 +659,12 @@ App.Views.ajustes = async function(){
   const {esc} = App.UIHelpers;
   const apiCfg = await App.Repo.config('anthropicApiKey');
   const nombreCfg = await App.Repo.config('miNombre');
+  const empresaCfg = await App.Repo.config('empresaNombre');
+  const logoCfg = await App.Repo.config('empresaLogo');
+  const checklistCfg = await App.Repo.config('checklistEstandarTexto');
+  const todas = await App.Repo.listar();
+
+  const opcionesInst = todas.map(i=>'<option value="'+i.id+'">'+esc(i.nombre)+'</option>').join('') || '<option value="">Sin instalaciones</option>';
 
   const html =
     '<div class="topbar" style="padding-bottom:20px;">'+
@@ -518,13 +676,44 @@ App.Views.ajustes = async function(){
         '<input type="text" id="ajNombre" value="'+esc(nombreCfg?nombreCfg.value:'Isaac Zamora')+'">'+
         '<button class="btn-outline" onclick="App.Handlers.guardarMiNombre()">Guardar</button>'+
       '</div>'+
+
+      '<div class="card"><h3>Datos de la empresa</h3>'+
+        '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;">Aparece en el encabezado de los reportes y actas en PDF.</div>'+
+        '<label>Nombre de la empresa</label><input type="text" id="ajEmpresa" value="'+esc(empresaCfg?empresaCfg.value:'')+'" placeholder="Ej. Colineal">'+
+        (logoCfg && logoCfg.value? '<img src="'+logoCfg.value+'" style="max-height:50px; margin-bottom:8px; display:block; border-radius:6px;">' : '')+
+        '<label>Logo (opcional)</label><input type="file" id="ajLogo" accept="image/*">'+
+        '<button class="btn-outline" onclick="App.Handlers.guardarEmpresa()">Guardar datos de empresa</button>'+
+      '</div>'+
+
       '<div class="card"><h3>API Key de Anthropic (opcional)</h3>'+
-        '<div style="font-size:12px; color:var(--ink-suave); margin-bottom:8px;">Se usa solo para que la IA sugiera tiempos del cronograma cuando no tienes historial propio. Se guarda solo en este dispositivo.</div>'+
+        '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;">Se usa solo para que la IA sugiera tiempos del cronograma cuando no tienes historial propio. Se guarda solo en este dispositivo.</div>'+
         '<input type="text" id="ajApiKey" value="'+esc(apiCfg?apiCfg.value:'')+'" placeholder="sk-ant-...">'+
         '<button class="btn-outline" onclick="App.Handlers.guardarApiKey()">Guardar API Key</button>'+
       '</div>'+
+
+      '<div class="card"><h3>Checklist estándar</h3>'+
+        '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;">Uno por línea. Es el que se carga con el botón "Usar checklist estándar" en cada proyecto nuevo.</div>'+
+        '<textarea id="ajChecklist" style="min-height:140px;">'+esc(checklistCfg? checklistCfg.value : App.Handlers.checklistEstandarDefault().join('\n'))+'</textarea>'+
+        '<button class="btn-outline" onclick="App.Handlers.guardarChecklistEstandar()">Guardar checklist estándar</button>'+
+      '</div>'+
+
       '<div class="card"><h3>Catálogos</h3>'+
         '<button class="btn-outline" onclick="App.Router.abrirPersonalGlobal()">Gestionar personal fijo</button>'+
+      '</div>'+
+
+      '<div class="card"><h3>Respaldo de datos</h3>'+
+        '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;">Descarga todo lo guardado (instalaciones, personal, catálogos) en un archivo, o restaura uno anterior.</div>'+
+        '<button class="btn-primary" onclick="App.Handlers.exportarBackup()">Descargar respaldo (.json)</button>'+
+        '<label style="margin-top:10px;">Restaurar desde archivo</label>'+
+        '<input type="file" id="ajRestoreFile" accept=".json">'+
+        '<button class="btn-outline" onclick="App.Handlers.importarBackup()">Restaurar respaldo</button>'+
+      '</div>'+
+
+      '<div class="card" style="border-left:3px solid var(--peligro);"><h3 style="color:var(--peligro);">Zona de peligro</h3>'+
+        '<label>Eliminar una instalación</label>'+
+        '<select id="ajInstEliminar">'+opcionesInst+'</select>'+
+        '<button class="btn-outline btn-danger" onclick="App.Handlers.eliminarInstalacionConfirm()">Eliminar instalación seleccionada</button>'+
+        '<button class="btn-outline btn-danger" style="margin-top:14px;" onclick="App.Handlers.reiniciarTodoConfirm()">Reiniciar toda la app (borra todo)</button>'+
       '</div>'+
     '</div>';
   document.getElementById('app').innerHTML = html;
@@ -537,7 +726,7 @@ App.Views.personalGlobal = async function(){
 
   const filas = cat.map(t=>
     '<div class="worker-row"><div class="avatar">'+iniciales(t.nombre)+'</div>'+
-    '<div class="worker-name">'+esc(t.nombre)+(t.rol? ' <span style="font-weight:500; color:var(--ink-suave); font-size:11px;">· '+esc(t.rol)+'</span>':'')+'</div>'+
+    '<div class="worker-name">'+esc(t.nombre)+(t.rol? ' <span style="font-weight:500; color:var(--texto-suave); font-size:11px;">· '+esc(t.rol)+'</span>':'')+'</div>'+
     '<button class="btn-outline" style="margin:0; width:auto; padding:6px 10px; font-size:11px;" onclick="App.Router.abrirTareas(\'trabajador\',\''+t.id+'\',\''+esc(t.nombre)+'\')">Ver tareas</button></div>'
   ).join('') || '<div class="empty">Sin trabajadores en el catálogo todavía</div>';
 
@@ -545,8 +734,8 @@ App.Views.personalGlobal = async function(){
 
   const gruposHtml = grupos.map(g=>{
     const nombres = g.miembros.map(id=>{ const t=cat.find(x=>x.id===id); return t?t.nombre:null; }).filter(Boolean).join(', ');
-    return '<div class="worker-row"><div class="avatar" style="background:var(--acero-claro); color:var(--acero);">👥</div>'+
-      '<div class="worker-name">'+esc(g.nombre)+'<div style="font-weight:500; color:var(--ink-suave); font-size:11px;">'+esc(nombres||'sin miembros')+'</div></div>'+
+    return '<div class="worker-row"><div class="avatar" style="background:var(--info-fondo); color:var(--info);">👥</div>'+
+      '<div class="worker-name">'+esc(g.nombre)+'<div style="font-weight:500; color:var(--texto-suave); font-size:11px;">'+esc(nombres||'sin miembros')+'</div></div>'+
       '<button class="btn-outline" style="margin:0; width:auto; padding:6px 10px; font-size:11px;" onclick="App.Router.abrirTareas(\'grupo\',\''+g.id+'\',\''+esc(g.nombre)+'\')">Ver tareas</button></div>';
   }).join('') || '<div class="empty">Sin grupos de trabajo todavía</div>';
 
@@ -575,33 +764,18 @@ App.Views.personalGlobal = async function(){
 
 App.Views.horasGlobales = async function(){
   const {esc} = App.UIHelpers;
-  const todas = await App.Repo.listar();
-  const cat = await App.Repo.catalogoTrabajadores();
-  const yo = await App.Repo.config('miNombre');
-  const miNombre = yo ? yo.value : 'Isaac Zamora';
+  const acumulado = await App.Repo.horasDetalladas();
+  const entradas = Object.entries(acumulado).sort((a,b)=>b[1].minutos-a[1].minutos);
 
-  const acumulado = {}; // key: 'trabajador|id' o 'extra|id' o 'YO' -> {nombre, minutos}
-  todas.forEach(inst=>{
-    (inst.registroHoras||[]).forEach(r=>{
-      if(!r.entrada || !r.salida) return;
-      const [eh,em]=r.entrada.split(':').map(Number);
-      const [sh,sm]=r.salida.split(':').map(Number);
-      const min = (sh*60+sm)-(eh*60+em);
-      if(min<=0) return;
-      let key, nombre;
-      if(r.trabajadorId==='YO'){ key='YO'; nombre=miNombre+' (tú)'; }
-      else if(r.esExtra){
-        const p = (inst.personalExtra||[]).find(x=>x.id===r.trabajadorId);
-        key = 'extra|'+r.trabajadorId; nombre = p?p.nombre:'—';
-      } else {
-        const t = cat.find(x=>x.id===r.trabajadorId);
-        key = 'fijo|'+r.trabajadorId; nombre = t?t.nombre:'—';
-      }
-      if(!acumulado[key]) acumulado[key] = {nombre, minutos:0};
-      acumulado[key].minutos += min;
-    });
-  });
-  const datos = Object.values(acumulado).sort((a,b)=>b.minutos-a.minutos);
+  const filas = entradas.map(([key,p])=>{
+    const horas = Math.floor(p.minutos/60), mins = p.minutos%60;
+    return '<div class="worker-row">'+
+      '<div class="avatar" style="width:26px;height:26px;font-size:11px;">'+iniciales(p.nombre)+'</div>'+
+      '<div class="worker-name">'+esc(p.nombre)+'</div>'+
+      '<div class="worker-hrs">'+horas+'h '+mins+'m</div>'+
+      '<button class="btn-outline" style="margin:0; width:auto; padding:6px 10px; font-size:10.5px;" onclick="App.Handlers.generarReporteHorasPersona(\''+key+'\')">PDF</button>'+
+    '</div>';
+  }).join('') || '<div class="empty">Sin horas registradas todavía</div>';
 
   const html =
     '<div class="topbar" style="padding-bottom:20px;">'+
@@ -610,7 +784,9 @@ App.Views.horasGlobales = async function(){
       '<div class="det-cliente">Acumulado en todas tus instalaciones</div>'+
     '</div>'+
     '<div class="content">'+
-      '<div class="card"><h3>Por persona</h3>'+App.Charts.barrasHoras(datos)+'</div>'+
+      '<div class="card"><h3>Por persona</h3>'+App.Charts.barrasHoras(entradas.map(([k,p])=>({nombre:p.nombre, minutos:p.minutos})))+'</div>'+
+      '<div class="card"><h3>Reportes individuales</h3>'+filas+'</div>'+
+      (entradas.length? '<button class="btn-primary" onclick="App.Handlers.generarReporteHorasTodos()">Generar reporte de todos los maestros</button>' : '')+
     '</div>';
   document.getElementById('app').innerHTML = html;
 };
@@ -626,9 +802,9 @@ App.Views.tareas = async function(tipo, id, nombre){
     return '<div class="envio-card">'+
       '<div style="display:flex; justify-content:space-between; align-items:center;">'+
         '<div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
-        '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:12px; color:var(--ink-suave);">'+a.horasEstimadas+'h'+(a.horasReales!=null?' · real '+a.horasReales+'h':'')+'</div>'+
+        '<div style="font-family:\'JetBrains Mono\',monospace; font-size:12px; color:var(--texto-suave);">'+a.horasEstimadas+'h'+(a.horasReales!=null?' · real '+a.horasReales+'h':'')+'</div>'+
       '</div>'+
-      '<div style="font-size:11.5px; color:var(--ink-suave); margin-top:4px;">Proyecto: '+esc(x.instalacionNombre)+'</div>'+
+      '<div style="font-size:11.5px; color:var(--texto-suave); margin-top:4px;">Proyecto: '+esc(x.instalacionNombre)+'</div>'+
     '</div>';
   }
 
@@ -651,8 +827,10 @@ App.Views.tareas = async function(tipo, id, nombre){
 
 App.Views.detalle = async function(inst, fase){
   const {esc} = App.UIHelpers;
-  const stampClass = inst.estado==='curso'?'curso':(inst.estado==='final'?'final':'pendiente');
-  const stampTxt = inst.estado==='curso'?'En curso':(inst.estado==='final'?'Finalizada':'Pendiente');
+  const riesgo = App.Charts.calcularRiesgo(inst);
+  const mostrarRiesgo = inst.estado==='curso' && riesgo.enRiesgo;
+  const stampClass = mostrarRiesgo ? 'riesgo' : (inst.estado==='curso'?'curso':(inst.estado==='final'?'final':'pendiente'));
+  const stampTxt = mostrarRiesgo ? 'En riesgo' : (inst.estado==='curso'?'En curso':(inst.estado==='final'?'Finalizada':'Pendiente'));
 
   let faseHtml = '';
   if(fase==='antes') faseHtml = await App.Views.faseAntes(inst);
@@ -663,7 +841,9 @@ App.Views.detalle = async function(inst, fase){
     '<div class="topbar" style="padding-bottom:0;">'+
       '<button class="back" onclick="App.Router.irDashboard()">‹ PANEL</button>'+
       '<div class="det-title">'+esc(inst.nombre)+' <span class="stamp '+stampClass+'" style="vertical-align:middle;">'+stampTxt+'</span></div>'+
-      '<div class="det-cliente">'+esc(inst.cliente||'')+(inst.ubicacion? ' — '+esc(inst.ubicacion):'')+'</div>'+
+      '<div class="det-cliente">'+esc(inst.cliente||'')+(inst.ubicacion? ' — '+esc(inst.ubicacion):'')+
+        (inst.fechaFinPlan? ' · Entrega: '+fmtFecha(inst.fechaFinPlan) : '')+
+      '</div>'+
       '<div style="height:16px;"></div>'+
     '</div>'+
     '<div class="phase-tabs">'+
@@ -706,7 +886,7 @@ App.Views.faseAntes = async function(inst){
   const materialesHtml = (inst.materiales||[]).map(m=>
     '<div class="check-row">'+
       '<button class="checkbox '+(m.estado==='entregado'?'on':'')+'" onclick="App.Handlers.toggleMaterial(\''+inst.id+'\',\''+m.id+'\')"></button>'+
-      '<div class="check-label">'+esc(m.nombre)+' <span style="color:var(--ink-suave);">×'+(m.cantidad||1)+'</span></div>'+
+      '<div class="check-label">'+esc(m.nombre)+' <span style="color:var(--texto-suave);">×'+(m.cantidad||1)+'</span></div>'+
       '<span class="check-tag '+(m.estado==='entregado'?'ok':'falta')+'">'+(m.estado==='entregado'?'Ok':'Falta')+'</span>'+
       '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'materiales\',\''+m.id+'\')">✕</button>'+
     '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin materiales registrados</div>';
@@ -717,12 +897,12 @@ App.Views.faseAntes = async function(inst){
         '<div style="font-size:13px; font-weight:700;">'+(t.modo==='camion'?'🚛':'🚗')+' '+esc(t.empresa||t.modo)+'</div>'+
         '<span class="stamp '+(t.estado==='entregado'?'final':'curso')+'" style="transform:none;">'+(t.estado==='entregado'?'Entregado':'En camino')+'</span>'+
       '</div>'+
-      '<div style="font-size:11.5px; color:var(--ink-suave); margin-top:8px; line-height:1.6;">'+
-        (t.solicitado? 'Solicitado: <b style="color:var(--ink);">'+esc(t.solicitado)+'</b><br>':'')+
-        (t.carga? 'Carga: <b style="color:var(--ink);">'+esc(t.carga)+'</b><br>':'')+
-        (t.llegadaEst? 'Llegada estimada: <b style="color:var(--ink);">'+esc(t.llegadaEst)+'</b><br>':'')+
-        (t.llegadaReal? 'Llegada real: <b style="color:var(--ink);">'+esc(t.llegadaReal)+'</b><br>':'')+
-        'Flete: <b style="color:var(--ink);">'+(t.costo? '$'+t.costo+' MXN':'Sin costo')+'</b>'+
+      '<div style="font-size:11.5px; color:var(--texto-suave); margin-top:8px; line-height:1.6;">'+
+        (t.solicitado? 'Solicitado: <b style="color:var(--texto);">'+esc(t.solicitado)+'</b><br>':'')+
+        (t.carga? 'Carga: <b style="color:var(--texto);">'+esc(t.carga)+'</b><br>':'')+
+        (t.llegadaEst? 'Llegada estimada: <b style="color:var(--texto);">'+esc(t.llegadaEst)+'</b><br>':'')+
+        (t.llegadaReal? 'Llegada real: <b style="color:var(--texto);">'+esc(t.llegadaReal)+'</b><br>':'')+
+        'Flete: <b style="color:var(--texto);">'+(t.costo? '$'+t.costo+' MXN':'Sin costo')+'</b>'+
       '</div>'+
       '<div style="display:flex; gap:8px; margin-top:8px;">'+
         (t.estado!=='entregado'? '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.marcarEntregado(\''+inst.id+'\',\''+t.id+'\')">Marcar entregado</button>':'')+
@@ -739,44 +919,47 @@ App.Views.faseAntes = async function(inst){
 
   const extraHtml = (inst.personalExtra||[]).map(p=>
     '<div class="worker-row"><div class="avatar extra">'+iniciales(p.nombre)+'</div>'+
-    '<div class="worker-name">'+esc(p.nombre)+' <span style="font-weight:500; color:var(--ink-suave); font-size:11px;">· '+esc(p.ciudad||'local')+'</span></div>'+
+    '<div class="worker-name">'+esc(p.nombre)+' <span style="font-weight:500; color:var(--texto-suave); font-size:11px;">· '+esc(p.ciudad||'local')+'</span></div>'+
     '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'personalExtra\',\''+p.id+'\')">✕</button></div>'
   ).join('') || '<div class="empty" style="padding:14px 0;">Sin personal extra</div>';
 
-  const cronoHtml = (inst.cronograma||[]).map(a=>
-    '<div class="envio-card">'+
-      '<div style="display:flex; justify-content:space-between; align-items:center;">'+
-        '<div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
-        '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:13px; font-weight:600; color:var(--naranja-osc);">'+a.horasEstimadas+'h</div>'+
+  const tl = App.Charts.timelineCronograma(inst);
+  let feasHtml = '';
+  if(tl.feasibilidad){
+    const f = tl.feasibilidad;
+    let motivo;
+    if(f.atrasadas>0 && f.enRiesgoPlazo) motivo = f.atrasadas+' actividad(es) atrasada(s) y la fecha de entrega ya no alcanza';
+    else if(f.atrasadas>0) motivo = f.atrasadas+' actividad(es) ya está(n) atrasada(s)';
+    else if(f.enRiesgoPlazo) motivo = 'La última actividad planeada ('+fmtFecha(f.finMasTardio)+') es después de la entrega';
+    else motivo = 'Última actividad: '+fmtFecha(f.finMasTardio||f.finProyecto);
+    feasHtml = '<div style="padding:9px 11px; border-radius:8px; margin-bottom:12px; background:'+(f.enRiesgo?'var(--peligro-fondo)':'var(--exito-fondo)')+';">'+
+      '<div style="font-size:11.5px; font-weight:700; color:'+(f.enRiesgo?'var(--peligro)':'var(--exito)')+';">'+
+      (f.enRiesgo? '⚠ En riesgo de retraso' : '✓ Dentro del plazo planeado')+
       '</div>'+
-      '<div style="font-size:11.5px; color:var(--acero); margin-top:4px;">'+(a.asignado? (a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre) : '<span style="color:var(--ink-suave);">Sin asignar</span>')+'</div>'+
-      (a.nota? '<div class="ai-tag">'+(a.origen!=='manual'?'✨ ':'')+esc(a.nota)+'</div>' : '')+
-      '<div style="display:flex; gap:8px; margin-top:6px;">'+
-        '<button class="btn-outline" style="margin:0; padding:6px 10px; font-size:11px;" onclick="App.Handlers.reasignarActividad(\''+inst.id+'\',\''+a.id+'\')">Reasignar</button>'+
-        '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'cronograma\',\''+a.id+'\')">✕ quitar</button>'+
-      '</div>'+
-    '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin actividades en el cronograma</div>';
-
-  const cronoChart = (inst.cronograma||[]).length ? App.Charts.barrasCronograma(inst.cronograma) : '';
+      '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">'+motivo+(f.finProyecto? ' · Entrega planeada: '+fmtFecha(f.finProyecto):'')+'</div>'+
+    '</div>';
+  }
+  const cronoHtml = feasHtml + (tl.html || '<div class="empty" style="padding:14px 0;">Sin actividades en el cronograma</div>');
+  const cronoChart = '';
 
   const docTipoIcono = {cotizacion:'📄', presupuesto:'💰', contrato:'📝', otro:'📎'};
   const documentosHtml = (inst.documentos||[]).map(d=>
     '<div class="check-row">'+
-      '<div class="check-label">'+(docTipoIcono[d.tipo]||'📎')+' '+esc(d.nombre)+' <span style="color:var(--ink-suave); font-size:11px;">· '+fmtFecha(d.fecha)+'</span></div>'+
-      '<a href="'+d.dataUrl+'" download="'+esc(d.nombre)+'" style="font-size:11px; font-weight:700; color:var(--acero); text-decoration:none; padding:4px 8px;">Ver</a>'+
+      '<div class="check-label">'+(docTipoIcono[d.tipo]||'📎')+' '+esc(d.nombre)+' <span style="color:var(--texto-suave); font-size:11px;">· '+fmtFecha(d.fecha)+'</span></div>'+
+      '<a href="'+d.dataUrl+'" download="'+esc(d.nombre)+'" style="font-size:11px; font-weight:700; color:var(--info); text-decoration:none; padding:4px 8px;">Ver</a>'+
       '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'documentos\',\''+d.id+'\')">✕</button>'+
     '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin documentos adjuntos</div>';
 
   const checklistHtml = (inst.checklistGeneral||[]).map(c=>
     '<div class="check-row">'+
       '<button class="checkbox '+(c.hecho?'on':'')+'" onclick="App.Handlers.toggleChecklistGeneral(\''+inst.id+'\',\''+c.id+'\')"></button>'+
-      '<div class="check-label">'+esc(c.texto)+(c.hecho && c.fechaCompletado? ' <span style="color:var(--verde); font-size:10.5px;">· hecho '+fmtFecha(c.fechaCompletado)+'</span>':'')+'</div>'+
+      '<div class="check-label">'+esc(c.texto)+(c.hecho && c.fechaCompletado? ' <span style="color:var(--exito); font-size:10.5px;">· hecho '+fmtFecha(c.fechaCompletado)+'</span>':'')+'</div>'+
       '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'checklistGeneral\',\''+c.id+'\')">✕</button>'+
     '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin pendientes registrados</div>';
   const checklistHechos = (inst.checklistGeneral||[]).filter(c=>c.hecho).length;
 
   return (
-    (inst.cotizacionRef? '<div class="card" style="background:var(--acero-claro); color:var(--acero); font-size:12.5px;">📄 Referencia: '+esc(inst.cotizacionRef)+'</div>'
+    (inst.cotizacionRef? '<div class="card" style="background:var(--info-fondo); color:var(--info); font-size:12.5px;">📄 Referencia: '+esc(inst.cotizacionRef)+'</div>'
       : '<div class="card"><label>Referencia de cotización (texto breve)</label><input type="text" id="fCotiz" placeholder="Ej. COT-4471, closets + cocina"><button class="btn-outline" onclick="App.Handlers.guardarCotizacion(\''+inst.id+'\')">Guardar referencia</button></div>')+
 
     '<div class="card"><h3>Checklist general <span class="count">'+checklistHechos+'/'+(inst.checklistGeneral||[]).length+'</span></h3>'+checklistHtml+
@@ -794,14 +977,14 @@ App.Views.faseAntes = async function(inst){
     '<div class="card"><h3>Herramientas · Propias <span class="count">'+propiasLlevo+'/'+(inst.herramientasPropias||[]).length+'</span></h3>'+propiasHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarHerramientaPropia(\''+inst.id+'\')">+ Agregar herramienta</button></div>'+
 
-    '<div class="card"><h3>Por solicitar a la empresa</h3>'+solicitarHtml+
-      '<button class="btn-outline" onclick="App.Handlers.agregarHerramientaSolicitar(\''+inst.id+'\')">+ Agregar</button></div>'+
+    '<div class="card"><h3>Materiales y por solicitar</h3>'+materialesHtml+solicitarHtml+
+      '<div style="display:flex; gap:8px;">'+
+      '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.agregarMaterial(\''+inst.id+'\')">+ Material</button>'+
+      '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.agregarHerramientaSolicitar(\''+inst.id+'\')">+ Herramienta</button>'+
+      '</div></div>'+
 
     '<div class="card"><h3>Por comprar en sitio</h3>'+comprarHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarHerramientaComprar(\''+inst.id+'\')">+ Agregar compra en sitio</button></div>'+
-
-    '<div class="card"><h3>Materiales</h3>'+materialesHtml+
-      '<button class="btn-outline" onclick="App.Handlers.agregarMaterial(\''+inst.id+'\')">+ Agregar material</button></div>'+
 
     '<div class="card"><h3>Transporte <span class="count">'+(inst.transporte||[]).length+' envío(s)</span></h3>'+transporteHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarTransporte(\''+inst.id+'\')">+ Agregar envío</button></div>'+
@@ -812,8 +995,11 @@ App.Views.faseAntes = async function(inst){
     '<div class="card"><h3>Personal · Extra / eventual</h3>'+extraHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarPersonalExtra(\''+inst.id+'\')">+ Agregar personal extra</button></div>'+
 
-    '<div class="card"><h3>Cronograma</h3>'+cronoChart+cronoHtml+
-      '<button class="btn-outline" onclick="App.Handlers.agregarActividad(\''+inst.id+'\')">+ Agregar actividad</button></div>'+
+    '<div class="card"><h3>Cronograma <span class="count">'+(inst.fechaFinPlan? 'entrega: '+fmtFecha(inst.fechaFinPlan) : 'sin fecha de entrega')+'</span></h3>'+cronoChart+cronoHtml+
+      '<div style="display:flex; gap:8px;">'+
+      '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.configurarFechasProyecto(\''+inst.id+'\')">📅 Fechas</button>'+
+      '<button class="btn-primary" style="margin:0; flex:1;" onclick="App.Handlers.agregarActividad(\''+inst.id+'\')">+ Agregar actividad</button>'+
+      '</div></div>'+
 
     (inst.estado==='pendiente'? '<button class="btn-primary" onclick="App.Handlers.pasarACurso(\''+inst.id+'\')">Marcar como "En curso"</button>' : '')
   );
@@ -822,6 +1008,7 @@ App.Views.faseAntes = async function(inst){
 App.Views.faseDurante = async function(inst){
   const {esc} = App.UIHelpers;
   const trabajadoresCat = await App.Repo.catalogoTrabajadores();
+  const hoyStr = hoy();
 
   function personaInfo(id, esExtra){
     if(esExtra){
@@ -878,6 +1065,33 @@ App.Views.faseDurante = async function(inst){
   if(minYo>0) datosHoras.push({nombre: miNombre+' (tú)', minutos: minYo});
   datosHoras.sort((a,b)=>b.minutos-a.minutos);
 
+  function turnoHoyFila(nombre, esExtraFlag, id){
+    const reg = (inst.registroHoras||[]).find(r=> r.trabajadorId===id && r.esExtra===!!esExtraFlag && r.fecha===hoyStr && r.entrada);
+    if(!reg) return '';
+    const salida = reg.salida || new Date().toTimeString().slice(0,5);
+    const h = App.Repo.totalHoras({registroHoras:[reg]});
+    return '<div style="margin-bottom:10px;">'+
+      '<div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600;">'+
+        '<span>'+esc(nombre)+(reg.salida?'':' <span style="color:var(--exito); font-weight:700;">· activo</span>')+'</span>'+
+        '<span style="font-family:\'JetBrains Mono\',monospace; color:var(--texto-suave);">'+reg.entrada+(reg.salida?' – '+reg.salida:'')+'</span>'+
+      '</div>'+
+      App.Charts.turnoBarra(reg.entrada, reg.salida)+
+    '</div>';
+  }
+  let turnosHoyHtml = '';
+  turnosHoyHtml += turnoHoyFila(miNombre+' (tú)', false, 'YO');
+  (inst.personalFijoIds||[]).forEach(id=>{
+    const t = trabajadoresCat.find(x=>x.id===id);
+    turnosHoyHtml += turnoHoyFila(t?t.nombre:'—', false, id);
+  });
+  (inst.personalExtra||[]).forEach(p=>{
+    turnosHoyHtml += turnoHoyFila(p.nombre, true, p.id);
+  });
+  if(!turnosHoyHtml) turnosHoyHtml = '<div class="empty" style="padding:14px 0;">Nadie ha marcado entrada hoy</div>';
+
+  const desviosCount = (inst.bitacoraDiaria||[]).filter(b=>b.desvio).length;
+  const calc2 = App.Repo.calcularProduccion(inst);
+
   const prod = inst.produccion || {unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas:[]};
   const calc = App.Repo.calcularProduccion(inst);
   const zonasHtml = (prod.zonas||[]).map(z=>{
@@ -885,7 +1099,7 @@ App.Views.faseDurante = async function(inst){
     const pctZ = z.cantidadRequerida>0 ? Math.round(inst2/z.cantidadRequerida*100) : 0;
     return '<div style="margin-bottom:9px;">'+
       '<div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:600;"><span>'+esc(z.nombre)+'</span>'+
-      '<span style="font-family:\'IBM Plex Mono\',monospace; color:var(--ink-suave);">'+inst2+'/'+z.cantidadRequerida+'</span></div>'+
+      '<span style="font-family:\'JetBrains Mono\',monospace; color:var(--texto-suave);">'+inst2+'/'+z.cantidadRequerida+'</span></div>'+
       '<div class="progress-track"><div class="progress-fill '+(pctZ>=100?'done':'')+'" style="width:'+Math.min(pctZ,100)+'%"></div></div>'+
     '</div>';
   }).join('') || '<div class="empty" style="padding:14px 0;">Sin zonas/pisos definidos todavía</div>';
@@ -900,13 +1114,13 @@ App.Views.faseDurante = async function(inst){
   const produccionHtml = prod.unidadTotal>0 ?
     '<div style="margin-bottom:14px;">'+
       '<div style="display:flex; justify-content:space-between; align-items:baseline;">'+
-        '<div style="font-family:\'Oswald\',sans-serif; font-size:26px; font-weight:700;">'+calc.totalInstalado+'<span style="font-size:14px; color:var(--ink-suave);"> / '+calc.unidadTotal+' '+esc(prod.unidadNombre||'unidades')+'</span></div>'+
-        '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:15px; font-weight:600; color:var(--naranja-osc);">'+calc.pct+'%</div>'+
+        '<div style="font-family:\'Space Grotesk\',sans-serif; font-size:26px; font-weight:700;">'+calc.totalInstalado+'<span style="font-size:14px; color:var(--texto-suave);"> / '+calc.unidadTotal+' '+esc(prod.unidadNombre||'unidades')+'</span></div>'+
+        '<div style="font-family:\'JetBrains Mono\',monospace; font-size:15px; font-weight:600; color:var(--acento-fuerte);">'+calc.pct+'%</div>'+
       '</div>'+
       '<div class="progress-track" style="height:9px; margin-top:6px;"><div class="progress-fill" style="width:'+Math.min(calc.pct,100)+'%"></div></div>'+
-      (metaSemanal>0? '<div style="margin-top:10px; padding:9px 11px; border-radius:8px; background:'+(semanaOk?'var(--verde-claro)':'var(--rojo-claro)')+';">'+
-        '<div style="font-size:11.5px; font-weight:700; color:'+(semanaOk?'var(--verde)':'var(--rojo)')+';">'+(semanaOk?'✓ Vas al ritmo esta semana':'⚠ Vas por debajo de la meta semanal')+'</div>'+
-        '<div style="font-size:11px; color:var(--ink-suave); margin-top:2px;">'+calc.instaladoSemana+' de '+metaSemanal+' '+esc(prod.unidadNombre||'unidades')+' esta semana</div>'+
+      (metaSemanal>0? '<div style="margin-top:10px; padding:9px 11px; border-radius:8px; background:'+(semanaOk?'var(--exito-fondo)':'var(--peligro-fondo)')+';">'+
+        '<div style="font-size:11.5px; font-weight:700; color:'+(semanaOk?'var(--exito)':'var(--peligro)')+';">'+(semanaOk?'✓ Vas al ritmo esta semana':'⚠ Vas por debajo de la meta semanal')+'</div>'+
+        '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">'+calc.instaladoSemana+' de '+metaSemanal+' '+esc(prod.unidadNombre||'unidades')+' esta semana</div>'+
       '</div>' : '')+
     '</div>'+
     '<div class="section-label" style="margin-top:4px;">Por zona / piso</div>'+zonasHtml+
@@ -933,6 +1147,14 @@ App.Views.faseDurante = async function(inst){
       '<button class="clock-btn" onclick="App.Handlers.checar(\''+inst.id+'\',\'YO\',false)">'+(abiertoYo?'Marcar salida':'Marcar entrada')+'</button>'+
     '</div>'+
 
+    '<div class="card"><h3>Resumen de hoy · '+fmtFecha(hoyStr)+'</h3>'+
+      '<div class="kpi-row">'+
+        '<div class="kpi'+(abiertosCount?' alert':'')+'"><div class="num">'+abiertosCount+'</div><div class="lbl">Problemas abiertos</div></div>'+
+        '<div class="kpi"><div class="num">'+desviosCount+'</div><div class="lbl">Desvíos bitácora</div></div>'+
+        '<div class="kpi"><div class="num">'+(calc2.unidadTotal>0? calc2.instaladoSemana : Math.round(App.Repo.totalHoras({registroHoras:(inst.registroHoras||[]).filter(r=>r.fecha===hoyStr)})/60))+'</div><div class="lbl">'+(calc2.unidadTotal>0? esc(prod.unidadNombre||'unid.')+' sem.':'horas hoy (equipo)')+'</div></div>'+
+      '</div>'+
+    '</div>'+
+
     '<div class="card"><h3>Producción por unidades</h3>'+produccionHtml+
       '<div style="display:flex; gap:8px; margin-top:8px;">'+
       '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.configurarProduccion(\''+inst.id+'\')">'+(prod.unidadTotal>0?'Editar configuración':'Configurar')+'</button>'+
@@ -940,15 +1162,17 @@ App.Views.faseDurante = async function(inst){
       '<button class="btn-primary" style="margin:0; flex:1;" onclick="App.Handlers.registrarAvance(\''+inst.id+'\')">Registrar avance</button>' : '')+
       '</div></div>'+
 
+    '<div class="card"><h3>Turnos de hoy <span class="count">entrada → salida</span></h3>'+turnosHoyHtml+'</div>'+
+
     '<div class="card"><h3>Personal en sitio</h3>'+(personalRows||'<div class="empty" style="padding:14px 0;">Sin personal asignado</div>')+'</div>'+
 
-    '<div class="card"><h3>Horas por persona</h3>'+App.Charts.barrasHoras(datosHoras)+'</div>'+
+    '<div class="card"><h3>Horas totales por persona</h3>'+App.Charts.barrasHoras(datosHoras)+'</div>'+
 
     '<div class="card"><h3>Avance general</h3>'+
       '<div class="progress-track" style="height:8px;"><div class="progress-fill" style="width:'+avance+'%"></div></div>'+
-      '<div style="font-family:\'IBM Plex Mono\',monospace; font-size:12px; margin-top:8px; color:var(--ink-suave);">'+avance+'% completado · '+completadas+'/'+(inst.cronograma||[]).length+' actividades</div>'+
+      '<div style="font-family:\'JetBrains Mono\',monospace; font-size:12px; margin-top:8px; color:var(--texto-suave);">'+avance+'% completado · '+completadas+'/'+(inst.cronograma||[]).length+' actividades</div>'+
       (inst.cronograma||[]).map(a=> a.completada? '' :
-        '<div class="check-row"><div class="check-label">'+esc(a.nombre)+' <span style="color:var(--ink-suave);">('+a.horasEstimadas+'h est.)</span></div>'+
+        '<div class="check-row"><div class="check-label">'+esc(a.nombre)+' <span style="color:var(--texto-suave);">('+a.horasEstimadas+'h est.)</span></div>'+
         '<button class="btn-outline" style="margin:0; width:auto; padding:6px 10px; font-size:11px;" onclick="App.Handlers.completarActividad(\''+inst.id+'\',\''+a.id+'\')">Completar</button></div>'
       ).join('')+
     '</div>'+
@@ -1091,6 +1315,7 @@ App.Handlers = (function(){
     'Revisar documentos (cotización, contrato) completos',
     'Notificar al cliente la fecha de instalación'
   ];
+  function checklistEstandarDefault(){ return CHECKLIST_ESTANDAR; }
   function agregarChecklistItem(instId){
     openModal('Agregar pendiente',
       '<label>¿Qué hay que hacer?</label><input type="text" id="clTexto" placeholder="Ej. Confirmar acceso al edificio">'+
@@ -1106,8 +1331,10 @@ App.Handlers = (function(){
     await guardarYRefrescar(i);
   }
   async function cargarChecklistEstandar(instId){
+    const cfg = await App.Repo.config('checklistEstandarTexto');
+    const lista = cfg && cfg.value ? cfg.value.split('\n').map(s=>s.trim()).filter(Boolean) : CHECKLIST_ESTANDAR;
     const i = await inst(instId);
-    CHECKLIST_ESTANDAR.forEach(texto=> i.checklistGeneral.push({id: uid('cl'), texto, hecho:false, fechaCompletado:null}));
+    lista.forEach(texto=> i.checklistGeneral.push({id: uid('cl'), texto, hecho:false, fechaCompletado:null}));
     await guardarYRefrescar(i);
   }
   async function toggleChecklistGeneral(instId, itemId){
@@ -1341,11 +1568,8 @@ App.Handlers = (function(){
   }
 
   // ---- Cronograma ----
-  async function agregarActividad(instId){
-    const i = await inst(instId);
-    const trabCat = await App.Repo.catalogoTrabajadores();
-    const grupos = await App.Repo.catalogoGrupos();
-    let opciones = '<option value="">Sin asignar todavía</option>';
+  function _opcionesAsignado(i, trabCat, grupos, incluirSinAsignar){
+    let opciones = incluirSinAsignar? '<option value="">Sin asignar</option>' : '';
     (i.personalFijoIds||[]).forEach(id=>{
       const t = trabCat.find(x=>x.id===id);
       if(t) opciones += '<option value="trabajador|'+t.id+'|'+esc(t.nombre)+'">👤 '+esc(t.nombre)+'</option>';
@@ -1356,10 +1580,22 @@ App.Handlers = (function(){
     grupos.forEach(g=>{
       opciones += '<option value="grupo|'+g.id+'|'+esc(g.nombre)+'">👥 '+esc(g.nombre)+'</option>';
     });
+    return opciones;
+  }
+  async function agregarActividad(instId){
+    const i = await inst(instId);
+    const trabCat = await App.Repo.catalogoTrabajadores();
+    const grupos = await App.Repo.catalogoGrupos();
+    const opciones = '<option value="">Sin asignar todavía</option>'+_opcionesAsignado(i, trabCat, grupos, false);
+    const ultimasFechas = (i.cronograma||[]).filter(a=>a.fechaFin).map(a=>a.fechaFin).sort();
+    const sugFechaIni = ultimasFechas.length? ultimasFechas[ultimasFechas.length-1] : (i.fechaInicio||hoy());
     openModal('Agregar actividad',
       '<label>Nombre de la actividad</label><input type="text" id="aNombre" placeholder="Ej. Instalación de closets">'+
+      '<label>Fecha inicio planeada</label><input type="date" id="aFechaIni" value="'+sugFechaIni+'">'+
+      '<label>Fecha fin planeada</label><input type="date" id="aFechaFin">'+
       '<label>Horas estimadas (déjalo vacío para que la IA sugiera)</label><input type="number" id="aHoras" placeholder="Ej. 6" step="0.5">'+
       '<label>Asignar a</label><select id="aAsignado">'+opciones+'</select>'+
+      '<button class="btn-outline" onclick="App.Handlers.crearEquipoInline(\''+instId+'\',\'actividad\')">+ Crear equipo nuevo</button>'+
       '<button class="btn-primary" onclick="App.Handlers._confirmarActividad(\''+instId+'\')">Agregar</button>'
     );
   }
@@ -1371,18 +1607,20 @@ App.Handlers = (function(){
   }
   async function _confirmarActividad(instId){
     const nombre = document.getElementById('aNombre').value.trim();
+    const fechaInicio = document.getElementById('aFechaIni').value || '';
+    const fechaFin = document.getElementById('aFechaFin').value || '';
     const horasInput = document.getElementById('aHoras').value;
     const asignado = _leerAsignado();
     if(!nombre) return;
     closeModal();
     const i = await inst(instId);
     if(horasInput){
-      i.cronograma.push({id: uid('crn'), nombre, horasEstimadas: parseFloat(horasInput), origen:'manual', nota:'', completada:false, horasReales:null, asignado});
+      i.cronograma.push({id: uid('crn'), nombre, fechaInicio, fechaFin, horasEstimadas: parseFloat(horasInput), origen:'manual', nota:'', completada:false, horasReales:null, asignado});
       await guardarYRefrescar(i);
     } else {
       toast('Consultando IA para estimar tiempo...');
       const sug = await App.IA.sugerirTiempo(nombre);
-      i.cronograma.push({id: uid('crn'), nombre, horasEstimadas: sug.horas, origen: sug.origen, nota: sug.nota, completada:false, horasReales:null, asignado});
+      i.cronograma.push({id: uid('crn'), nombre, fechaInicio, fechaFin, horasEstimadas: sug.horas, origen: sug.origen, nota: sug.nota, completada:false, horasReales:null, asignado});
       await guardarYRefrescar(i);
     }
   }
@@ -1390,19 +1628,10 @@ App.Handlers = (function(){
     const i = await inst(instId);
     const trabCat = await App.Repo.catalogoTrabajadores();
     const grupos = await App.Repo.catalogoGrupos();
-    let opciones = '<option value="">Sin asignar</option>';
-    (i.personalFijoIds||[]).forEach(id=>{
-      const t = trabCat.find(x=>x.id===id);
-      if(t) opciones += '<option value="trabajador|'+t.id+'|'+esc(t.nombre)+'">👤 '+esc(t.nombre)+'</option>';
-    });
-    (i.personalExtra||[]).forEach(p=>{
-      opciones += '<option value="trabajador|'+p.id+'|'+esc(p.nombre)+'">👤 '+esc(p.nombre)+' (extra)</option>';
-    });
-    grupos.forEach(g=>{
-      opciones += '<option value="grupo|'+g.id+'|'+esc(g.nombre)+'">👥 '+esc(g.nombre)+'</option>';
-    });
+    const opciones = _opcionesAsignado(i, trabCat, grupos, true);
     openModal('Reasignar actividad',
       '<label>Asignar a</label><select id="aAsignado">'+opciones+'</select>'+
+      '<button class="btn-outline" onclick="App.Handlers.crearEquipoInline(\''+instId+'\',\'reasignar\',\''+itemId+'\')">+ Crear equipo nuevo</button>'+
       '<button class="btn-primary" onclick="App.Handlers._confirmarReasignar(\''+instId+'\',\''+itemId+'\')">Guardar</button>'
     );
   }
@@ -1413,6 +1642,26 @@ App.Handlers = (function(){
     if(a) a.asignado = asignado;
     closeModal();
     await guardarYRefrescar(i);
+  }
+  function crearEquipoInline(instId, contexto, itemId){
+    App.Repo.catalogoTrabajadores().then(cat=>{
+      const opcionesMiembros = cat.map(t=> '<label style="display:flex; align-items:center; gap:8px; font-weight:500; font-size:13px; margin-bottom:6px;"><input type="checkbox" value="'+t.id+'" class="chkMiembroGrupoInline" style="width:auto; margin:0;"> '+esc(t.nombre)+'</label>').join('') || '<div class="empty" style="padding:8px 0;">Agrega trabajadores al catálogo primero (pestaña Personal)</div>';
+      openModal('Crear equipo nuevo',
+        '<label>Nombre del equipo</label><input type="text" id="eqNombre" placeholder="Ej. Cuadrilla Norte">'+
+        '<label>Miembros</label>'+opcionesMiembros+
+        '<button class="btn-primary" style="margin-top:8px;" onclick="App.Handlers._confirmarEquipoInline(\''+instId+'\',\''+contexto+'\',\''+(itemId||'')+'\')">Crear equipo</button>'
+      );
+    });
+  }
+  async function _confirmarEquipoInline(instId, contexto, itemId){
+    const nombre = document.getElementById('eqNombre').value.trim();
+    if(!nombre){ toast('Ponle un nombre al equipo'); return; }
+    const miembros = Array.from(document.querySelectorAll('.chkMiembroGrupoInline:checked')).map(el=>el.value);
+    await App.Repo.agregarGrupo(nombre, miembros);
+    closeModal();
+    toast('Equipo creado — ya puedes asignarlo');
+    if(contexto==='actividad') agregarActividad(instId);
+    else if(contexto==='reasignar') reasignarActividad(instId, itemId);
   }
   async function completarActividad(instId, itemId){
     openModal('Completar actividad',
@@ -1425,6 +1674,25 @@ App.Handlers = (function(){
     const i = await inst(instId);
     const a = i.cronograma.find(x=>x.id===itemId);
     if(a){ a.completada = true; a.horasReales = horas || a.horasEstimadas; }
+    closeModal();
+    await guardarYRefrescar(i);
+  }
+
+  // ---- Fechas del proyecto ----
+  async function configurarFechasProyecto(instId){
+    const i = await inst(instId);
+    openModal('Fechas del proyecto',
+      '<label>Fecha de inicio</label><input type="date" id="pfInicio" value="'+(i.fechaInicio||hoy())+'">'+
+      '<label>Fecha planeada de entrega</label><input type="date" id="pfFin" value="'+(i.fechaFinPlan||'')+'">'+
+      '<button class="btn-primary" onclick="App.Handlers._confirmarFechasProyecto(\''+instId+'\')">Guardar</button>'
+    );
+  }
+  async function _confirmarFechasProyecto(instId){
+    const inicio = document.getElementById('pfInicio').value;
+    const fin = document.getElementById('pfFin').value;
+    const i = await inst(instId);
+    if(inicio) i.fechaInicio = inicio;
+    i.fechaFinPlan = fin || '';
     closeModal();
     await guardarYRefrescar(i);
   }
@@ -1579,11 +1847,28 @@ App.Handlers = (function(){
   }
 
   // ---- PDF reporte interno ----
+  async function _encabezadoEmpresa(doc){
+    const nombreCfg = await App.Repo.config('empresaNombre');
+    const logoCfg = await App.Repo.config('empresaLogo');
+    let xTexto = 14;
+    let hayEncabezado = false;
+    if(logoCfg && logoCfg.value){
+      const m = logoCfg.value.match(/^data:image\/(png|jpe?g)/i);
+      const fmt = (m && m[1].toLowerCase().startsWith('jpg')) || (m && m[1].toLowerCase().startsWith('jpeg')) ? 'JPEG' : 'PNG';
+      try{ doc.addImage(logoCfg.value, fmt, 14, 8, 20, 20); xTexto = 38; hayEncabezado = true; }catch(e){}
+    }
+    if(nombreCfg && nombreCfg.value){
+      doc.setFontSize(11); doc.text(nombreCfg.value, xTexto, 18);
+      hayEncabezado = true;
+    }
+    return hayEncabezado ? 34 : 18;
+  }
+
   async function generarReportePDF(instId){
     const i = await inst(instId);
     const {jsPDF} = window.jspdf;
     const doc = new jsPDF();
-    let y = 18;
+    let y = await _encabezadoEmpresa(doc);
     doc.setFontSize(16); doc.text('Reporte de Instalación', 14, y); y+=8;
     doc.setFontSize(11);
     doc.text('Proyecto: '+i.nombre, 14, y); y+=6;
@@ -1612,6 +1897,56 @@ App.Handlers = (function(){
     doc.save('Reporte_'+i.nombre.replace(/\s+/g,'_')+'.pdf');
   }
 
+  async function generarReporteHorasPersona(key){
+    const acumulado = await App.Repo.horasDetalladas();
+    const p = acumulado[key];
+    if(!p){ toast('Sin datos de horas para esta persona'); return; }
+    const {jsPDF} = window.jspdf;
+    const doc = new jsPDF();
+    let y = await _encabezadoEmpresa(doc);
+    doc.setFontSize(16); doc.text('Reporte de Horas', 14, y); y+=8;
+    doc.setFontSize(12); doc.text(p.nombre, 14, y); y+=6;
+    const totalH = Math.floor(p.minutos/60), totalM = p.minutos%60;
+    doc.setFontSize(10); doc.text('Total acumulado: '+totalH+'h '+totalM+'m', 14, y); y+=10;
+    doc.setFontSize(11); doc.text('Fecha', 14, y); doc.text('Proyecto', 50, y); doc.text('Entrada', 110, y); doc.text('Salida', 140, y); doc.text('Horas', 170, y); y+=6;
+    doc.setLineWidth(0.2); doc.line(14,y-2,196,y-2);
+    doc.setFontSize(10);
+    p.entradas.forEach(e=>{
+      const h = Math.floor(e.minutos/60), m = e.minutos%60;
+      doc.text(fmtFecha(e.fecha), 14, y);
+      doc.text((e.proyecto||'').slice(0,25), 50, y);
+      doc.text(e.entrada, 110, y);
+      doc.text(e.salida, 140, y);
+      doc.text(h+'h '+m+'m', 170, y);
+      y+=6;
+      if(y>270){doc.addPage(); y=18;}
+    });
+    doc.save('Horas_'+p.nombre.replace(/\s+/g,'_')+'.pdf');
+  }
+
+  async function generarReporteHorasTodos(){
+    const acumulado = await App.Repo.horasDetalladas();
+    const entradas = Object.values(acumulado).sort((a,b)=>b.minutos-a.minutos);
+    const {jsPDF} = window.jspdf;
+    const doc = new jsPDF();
+    let y = await _encabezadoEmpresa(doc);
+    doc.setFontSize(16); doc.text('Reporte de Horas — Todos los maestros', 14, y); y+=10;
+    entradas.forEach(p=>{
+      if(y>250){doc.addPage(); y=18;}
+      const totalH = Math.floor(p.minutos/60), totalM = p.minutos%60;
+      doc.setFontSize(12); doc.text(p.nombre+'  —  '+totalH+'h '+totalM+'m', 14, y); y+=7;
+      doc.setFontSize(9);
+      p.entradas.forEach(e=>{
+        const h = Math.floor(e.minutos/60), m = e.minutos%60;
+        doc.text('  '+fmtFecha(e.fecha)+'  ·  '+(e.proyecto||'').slice(0,22)+'  ·  '+e.entrada+'-'+e.salida+'  ·  '+h+'h '+m+'m', 14, y);
+        y+=5.5;
+        if(y>270){doc.addPage(); y=18;}
+      });
+      y+=5;
+    });
+    doc.save('Horas_Todos_los_maestros.pdf');
+  }
+
   function limpiarFirma(canvasId){ App.SignaturePad.limpiar(canvasId); }
 
   async function generarActaPDF(instId){
@@ -1630,7 +1965,7 @@ App.Handlers = (function(){
 
     const {jsPDF} = window.jspdf;
     const doc = new jsPDF();
-    let y = 20;
+    let y = await _encabezadoEmpresa(doc);
     doc.setFontSize(17); doc.text('Acta de Entrega', 14, y); y+=10;
     doc.setFontSize(11);
     doc.text('Proyecto: '+i.nombre, 14, y); y+=6;
@@ -1639,7 +1974,17 @@ App.Handlers = (function(){
     doc.text('Fecha de entrega: '+fmtFecha(fecha), 14, y); y+=10;
 
     doc.setFontSize(13); doc.text('Lo instalado', 14, y); y+=7; doc.setFontSize(10);
-    (i.materiales||[]).forEach(m=>{ doc.text('- '+m.nombre, 14, y); y+=6; });
+    (i.materiales||[]).forEach(m=>{ doc.text('- '+m.nombre, 14, y); y+=6; if(y>270){doc.addPage(); y=18;} });
+    if(i.produccion && i.produccion.unidadTotal>0){
+      const calc = App.Repo.calcularProduccion(i);
+      doc.text('- '+calc.totalInstalado+' de '+calc.unidadTotal+' '+(i.produccion.unidadNombre||'unidades')+' ('+calc.pct+'%)', 14, y); y+=6;
+      (i.produccion.zonas||[]).forEach(z=>{
+        const cant = calc.porZona[z.id]||0;
+        doc.text('   · '+z.nombre+': '+cant+'/'+z.cantidadRequerida, 14, y); y+=6;
+        if(y>270){doc.addPage(); y=18;}
+      });
+    }
+    (i.cronograma||[]).filter(a=>a.completada).forEach(a=>{ doc.text('- '+a.nombre+' (completada)', 14, y); y+=6; if(y>270){doc.addPage(); y=18;} });
     y+=6;
 
     doc.setFontSize(13); doc.text('Observaciones del cliente', 14, y); y+=7; doc.setFontSize(10);
@@ -1671,11 +2016,13 @@ App.Handlers = (function(){
     agregarPersonalExtra, _confirmarPersonalExtra,
     checar,
     agregarActividad, _confirmarActividad, completarActividad, _confirmarCompletar, reasignarActividad, _confirmarReasignar,
+    crearEquipoInline, _confirmarEquipoInline, configurarFechasProyecto, _confirmarFechasProyecto,
     configurarProduccion, _confirmarProduccion, agregarZona, _confirmarZona, registrarAvance, _confirmarAvance,
     agregarBitacora, _confirmarBitacora,
     agregarProblema, _confirmarProblema, toggleProblema,
     pasarACurso, marcarFinalizada,
-    generarReportePDF
+    generarReportePDF, generarReporteHorasPersona, generarReporteHorasTodos,
+    checklistEstandarDefault
   };
 })();
 
@@ -1688,6 +2035,89 @@ App.Handlers.guardarApiKey = async function(){
   const val = document.getElementById('ajApiKey').value.trim();
   await App.Repo.setConfig('anthropicApiKey', val);
   App.UIHelpers.toast('API Key guardada');
+};
+App.Handlers.guardarEmpresa = async function(){
+  const nombre = document.getElementById('ajEmpresa').value.trim();
+  await App.Repo.setConfig('empresaNombre', nombre);
+  const fileInput = document.getElementById('ajLogo');
+  const file = fileInput.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = async function(e){
+      await App.Repo.setConfig('empresaLogo', e.target.result);
+      App.UIHelpers.toast('Datos de empresa guardados');
+      App.Views.ajustes();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    App.UIHelpers.toast('Datos de empresa guardados');
+  }
+};
+App.Handlers.guardarChecklistEstandar = async function(){
+  const val = document.getElementById('ajChecklist').value;
+  await App.Repo.setConfig('checklistEstandarTexto', val);
+  App.UIHelpers.toast('Checklist estándar guardado');
+};
+App.Handlers.exportarBackup = async function(){
+  const data = await App.Repo.exportarTodo();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'respaldo_instalaciones_'+hoy()+'.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  App.UIHelpers.toast('Respaldo descargado');
+};
+App.Handlers.importarBackup = async function(){
+  const fileInput = document.getElementById('ajRestoreFile');
+  const file = fileInput.files[0];
+  if(!file){ App.UIHelpers.toast('Selecciona un archivo primero'); return; }
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      await App.Repo.importarTodo(data);
+      App.UIHelpers.toast('Respaldo restaurado');
+      App.Views.ajustes();
+    }catch(err){
+      App.UIHelpers.toast('Archivo de respaldo inválido');
+    }
+  };
+  reader.readAsText(file);
+};
+App.Handlers.eliminarInstalacionConfirm = async function(){
+  const id = document.getElementById('ajInstEliminar').value;
+  if(!id) return;
+  const {openModal, closeModal} = App.UIHelpers;
+  const inst = await App.Repo.obtener(id);
+  openModal('¿Eliminar '+(inst?inst.nombre:'esta instalación')+'?',
+    '<div style="font-size:13px; color:var(--texto-suave); margin-bottom:14px;">Esta acción no se puede deshacer. Se borrará todo lo registrado en este proyecto.</div>'+
+    '<button class="btn-outline btn-danger" onclick="App.Handlers._confirmarEliminarInstalacion(\''+id+'\')">Sí, eliminar</button>'+
+    '<button class="btn-outline" style="margin-top:8px;" onclick="App.UIHelpers.closeModal()">Cancelar</button>'
+  );
+};
+App.Handlers._confirmarEliminarInstalacion = async function(id){
+  await App.Repo.eliminar(id);
+  App.UIHelpers.closeModal();
+  App.UIHelpers.toast('Instalación eliminada');
+  App.Views.ajustes();
+};
+App.Handlers.reiniciarTodoConfirm = function(){
+  const {openModal} = App.UIHelpers;
+  openModal('¿Reiniciar toda la app?',
+    '<div style="font-size:13px; color:var(--texto-suave); margin-bottom:14px;">Esto borra TODAS las instalaciones, personal, grupos y ajustes. No se puede deshacer. Considera descargar un respaldo antes.</div>'+
+    '<button class="btn-outline btn-danger" onclick="App.Handlers._confirmarReiniciarTodo()">Sí, borrar todo</button>'+
+    '<button class="btn-outline" style="margin-top:8px;" onclick="App.UIHelpers.closeModal()">Cancelar</button>'
+  );
+};
+App.Handlers._confirmarReiniciarTodo = async function(){
+  await App.Repo.reiniciarTodo();
+  App.UIHelpers.closeModal();
+  App.UIHelpers.toast('App reiniciada');
+  App.Router.irDashboard();
 };
 App.Handlers.agregarTrabajadorGlobal = async function(){
   const nombre = document.getElementById('pgNombre').value.trim();
@@ -1736,8 +2166,10 @@ App.Views.dashboard = async function(){
     const avance = App.Repo.calcularAvance(inst);
     const abiertos = (inst.problemas||[]).filter(p=>p.estado==='abierto').length;
     const personalTotal = (inst.personalFijoIds||[]).length + (inst.personalExtra||[]).length;
-    const stampClass = inst.estado==='curso'?'curso':(inst.estado==='final'?'final':'pendiente');
-    const stampTxt = inst.estado==='curso'?'En curso':(inst.estado==='final'?'Finalizada':'Pendiente');
+    const riesgo = App.Charts.calcularRiesgo(inst);
+    const mostrarRiesgo = inst.estado==='curso' && riesgo.enRiesgo;
+    const stampClass = mostrarRiesgo ? 'riesgo' : (inst.estado==='curso'?'curso':(inst.estado==='final'?'final':'pendiente'));
+    const stampTxt = mostrarRiesgo ? 'En riesgo' : (inst.estado==='curso'?'En curso':(inst.estado==='final'?'Finalizada':'Pendiente'));
     const buscador = (inst.nombre+' '+(inst.cliente||'')+' '+(inst.ubicacion||'')).toLowerCase();
     return '<div class="proyecto-wrap" data-search="'+esc(buscador)+'" data-problema="'+(abiertos?'1':'0')+'">'+
     '<div class="card" onclick="App.Router.abrirInstalacion(\''+inst.id+'\')">'+
@@ -1750,6 +2182,7 @@ App.Views.dashboard = async function(){
         '<div class="meta-item">📍 <b>'+esc(inst.ubicacion||'—')+'</b></div>'+
         '<div class="meta-item">👷 <b>'+personalTotal+'</b> personal</div>'+
         (abiertos? '<div class="meta-item">⚠️ <b>'+abiertos+'</b> problema(s)</div>' : '')+
+        (inst.fechaFinPlan? '<div class="meta-item">🏁 <b>'+fmtFecha(inst.fechaFinPlan)+'</b></div>' : '')+
       '</div>'+
       (inst.estado!=='pendiente' ? '<div class="progress-track"><div class="progress-fill '+(inst.estado==='final'?'done':'')+'" style="width:'+avance+'%"></div></div>' : '')+
     '</div></div>';
@@ -1763,18 +2196,18 @@ App.Views.dashboard = async function(){
       '<button class="iconbtn" onclick="App.Router.abrirAjustes()">⚙️</button>'+
     '</div>'+
     '<div class="content">'+
-      ((curso.length+pendientes.length)? '<div class="section-label">Accesos rápidos</div>'+
-        '<div style="display:flex; gap:8px; margin-bottom:14px;">'+
-          '<button class="btn-outline" style="margin:0; padding:12px 6px; font-size:11.5px;" onclick="App.Views.accesoRapido(\'checador\')">⏱️<br>Marcar hora</button>'+
-          '<button class="btn-outline" style="margin:0; padding:12px 6px; font-size:11.5px;" onclick="App.Views.accesoRapido(\'problema\')">⚠️<br>Reportar problema</button>'+
-          '<button class="btn-outline" style="margin:0; padding:12px 6px; font-size:11.5px;" onclick="App.Views.accesoRapido(\'bitacora\')">📝<br>Bitácora diaria</button>'+
-        '</div>' : '')+
       '<input type="text" id="buscarProyecto" placeholder="Buscar por nombre, cliente o ciudad..." oninput="App.Views.filtrarProyectos(this.value)" style="margin-bottom:12px;">'+
       '<div class="kpi-row">'+
         '<div class="kpi" onclick="App.Views.filtrarProblemas(false)" style="cursor:pointer;"><div class="num">'+curso.length+'</div><div class="lbl">Activas</div></div>'+
         '<div class="kpi alert" onclick="App.Views.filtrarProblemas(true)" style="cursor:pointer;"><div class="num">'+conProblemas+'</div><div class="lbl">Con problemas</div></div>'+
         '<div class="kpi" onclick="App.Views.filtrarProblemas(false)" style="cursor:pointer;"><div class="num">'+finalizadas.length+'</div><div class="lbl">Finalizadas</div></div>'+
       '</div>'+
+      ((curso.length+pendientes.length)?
+      '<div class="kpi-row" style="margin-top:8px;">'+
+        '<div class="kpi kpi-action" onclick="App.Views.accesoRapido(\'checador\')"><div class="num" style="font-size:19px;">⏱️</div><div class="lbl">Marcar hora</div></div>'+
+        '<div class="kpi kpi-action" onclick="App.Views.accesoRapido(\'problema\')"><div class="num" style="font-size:19px;">⚠️</div><div class="lbl">Problema</div></div>'+
+        '<div class="kpi kpi-action" onclick="App.Views.accesoRapido(\'bitacora\')"><div class="num" style="font-size:19px;">📝</div><div class="lbl">Bitácora</div></div>'+
+      '</div>' : '')+
       (curso.length? '<div class="section-label">En curso</div>'+curso.map(tarjeta).join('') : '')+
       (pendientes.length? '<div class="section-label">Pendientes por salir</div>'+pendientes.map(tarjeta).join('') : '')+
       (finalizadas.length? '<div class="section-label">Finalizadas</div>'+finalizadas.map(tarjeta).join('') : '')+
@@ -1857,6 +2290,7 @@ App.Router = (function(){
       '<label>Cliente</label><input type="text" id="fCliente" placeholder="Nombre del cliente">'+
       '<label>Ubicación</label><input type="text" id="fUbicacion" placeholder="Ciudad / dirección">'+
       '<label>Fecha de inicio</label><input type="date" id="fFecha" value="'+hoy()+'">'+
+      '<label>Fecha planeada de entrega (opcional, para proyectos largos)</label><input type="date" id="fFechaFin">'+
       '<button class="btn-primary" onclick="App.Router._crearInstalacion()">Crear instalación</button>'
     );
   }
@@ -1866,7 +2300,8 @@ App.Router = (function(){
     const cliente = document.getElementById('fCliente').value.trim();
     const ubicacion = document.getElementById('fUbicacion').value.trim();
     const fechaInicio = document.getElementById('fFecha').value;
-    const inst = await App.Repo.nuevaInstalacion({nombre, cliente, ubicacion, fechaInicio});
+    const fechaFinPlan = document.getElementById('fFechaFin').value;
+    const inst = await App.Repo.nuevaInstalacion({nombre, cliente, ubicacion, fechaInicio, fechaFinPlan});
     App.UIHelpers.closeModal();
     abrirInstalacion(inst.id);
   }
@@ -1919,9 +2354,27 @@ App.Router = (function(){
 /* ===================== VISTA: ACTA DE ENTREGA ===================== */
 App.Views.acta = async function(inst){
   const {esc} = App.UIHelpers;
-  const instaladoHtml = (inst.materiales||[]).map(m=>
-    '<div class="check-row"><button class="checkbox on" style="pointer-events:none;"></button><div class="check-label">'+esc(m.nombre)+'</div></div>'
-  ).join('') || '<div class="empty" style="padding:14px 0;">Sin materiales registrados en el proyecto</div>';
+  let instaladoHtml = '';
+  if((inst.materiales||[]).length){
+    instaladoHtml += (inst.materiales||[]).map(m=>
+      '<div class="check-row"><button class="checkbox on" style="pointer-events:none;"></button><div class="check-label">'+esc(m.nombre)+'</div></div>'
+    ).join('');
+  }
+  if(inst.produccion && inst.produccion.unidadTotal>0){
+    const calc = App.Repo.calcularProduccion(inst);
+    instaladoHtml += '<div class="check-row"><div class="check-label">'+calc.totalInstalado+' de '+calc.unidadTotal+' '+esc(inst.produccion.unidadNombre||'unidades')+' ('+calc.pct+'%)</div></div>';
+    (inst.produccion.zonas||[]).forEach(z=>{
+      const cant = calc.porZona[z.id]||0;
+      instaladoHtml += '<div class="check-row"><div class="check-label" style="padding-left:10px;">'+esc(z.nombre)+'</div><b style="font-size:12px;">'+cant+'/'+z.cantidadRequerida+'</b></div>';
+    });
+  }
+  const completadasCrono = (inst.cronograma||[]).filter(a=>a.completada);
+  if(completadasCrono.length){
+    instaladoHtml += completadasCrono.map(a=>
+      '<div class="check-row"><button class="checkbox on" style="pointer-events:none;"></button><div class="check-label">'+esc(a.nombre)+'</div></div>'
+    ).join('');
+  }
+  if(!instaladoHtml) instaladoHtml = '<div class="empty" style="padding:14px 0;">Sin materiales, producción o actividades registradas en el proyecto</div>';
 
   const html =
     '<div class="topbar" style="padding-bottom:20px;">'+
