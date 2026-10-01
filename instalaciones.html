@@ -427,7 +427,7 @@ html,body{margin:0; padding:0; background:var(--fondo); color:var(--texto); font
 input,select,textarea,button{font-family:inherit; font-size:16px;} /* evita auto-zoom iOS */
 button{cursor:pointer;}
 button svg{width:18px; height:18px;} /* evita SVG a tama\u00f1o gigante en Safari */
-#app{max-width:520px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:86px;}
+#app{max-width:520px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:calc(160px + env(safe-area-inset-bottom, 0px));}
 
 .topbar{padding:calc(env(safe-area-inset-top) + 16px) 20px 16px; background:var(--superficie); color:var(--texto); border-bottom:1px solid var(--borde); position:relative;}
 .topbar .eyebrow{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--acento); font-weight:600;}
@@ -472,10 +472,10 @@ button svg{width:18px; height:18px;} /* evita SVG a tama\u00f1o gigante en Safar
 
 .dot-live{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--acento); box-shadow:0 0 6px var(--acento); margin-right:5px;}
 
-.fab{position:fixed; bottom:96px; right:calc(50% - 260px + 20px); width:56px; height:56px; border-radius:16px; background:var(--acento); display:flex; align-items:center; justify-content:center; color:var(--fondo); font-size:28px; border:none; box-shadow:0 8px 20px rgba(47,217,206,0.35); z-index:20;}
+.fab{position:fixed; bottom:calc(70px + env(safe-area-inset-bottom, 0px) + 16px); right:calc(50% - 260px + 20px); width:56px; height:56px; border-radius:16px; background:var(--acento); display:flex; align-items:center; justify-content:center; color:var(--fondo); font-size:28px; border:none; box-shadow:0 8px 20px rgba(47,217,206,0.35); z-index:21;}
 @media (max-width:560px){.fab{right:20px;}}
 
-.tabbar{position:fixed; bottom:0; left:0; right:0; max-width:520px; margin:0 auto; height:calc(70px + env(safe-area-inset-bottom)); background:var(--superficie); border-top:1px solid var(--borde); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:20;}
+.tabbar{position:fixed; bottom:0; left:0; right:0; max-width:520px; margin:0 auto; height:calc(70px + env(safe-area-inset-bottom, 0px)); background:var(--superficie); border-top:1px solid var(--borde); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:20;}
 .tabbar-item{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:10px; font-weight:600; color:var(--texto-suave); background:none; border:none;}
 .tabbar-item.active{color:var(--acento-fuerte);}
 
