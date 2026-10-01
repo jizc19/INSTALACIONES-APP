@@ -811,6 +811,52 @@ body.am-hoja-abierta::before{ background:#000 !important; }
 .tabbar-item.am-rebota{ animation: am-rebote .5s var(--am-ease-resorte); }
 /* Avisos: arriba, debajo de la barra de estado */
 .toast{ top:calc(env(safe-area-inset-top, 0px) + 10px) !important; bottom:auto !important; left:0 !important; right:0 !important; margin:0 auto; width:max-content; max-width:88%; transform:none; text-align:center; }
+
+/* ===== Animaciones propias de INSTALACIONES-APP ===== */
+@keyframes am-latido { 0%{ transform:scale(1); } 35%{ transform:scale(1.025); box-shadow:0 0 0 3px var(--am-acento-onda); } 100%{ transform:scale(1); box-shadow:none; } }
+.am-latido{ animation: am-latido .6s var(--am-ease-resorte); animation-delay: calc(var(--am-k,0)*45ms); }
+@keyframes am-ok-flash { 0%{ box-shadow:0 0 0 0 rgba(95,196,138,.0); transform:scale(1); } 30%{ box-shadow:0 0 0 4px rgba(95,196,138,.45); transform:scale(1.03); } 100%{ box-shadow:0 0 0 0 rgba(95,196,138,0); transform:scale(1); } }
+.am-ok-flash{ animation: am-ok-flash .75s var(--am-ease-resorte) backwards; animation-delay: calc(var(--am-k,0)*45ms); }
+@keyframes am-salto { 0%{ transform:scale(.6); } 55%{ transform:scale(1.18); } 100%{ transform:scale(1); } }
+.am-salto{ animation: am-salto .5s var(--am-ease-resorte); position:relative; z-index:2; }
+.am-destello{ animation-delay: calc(var(--am-k,0)*45ms), calc(var(--am-k,0)*45ms); }
+/* Puertas que aparecen en cascada al abrir un piso */
+.am-chips-entra > button{ animation: am-aparecer .35s var(--am-ease-ios) backwards; animation-delay: calc(var(--am-k,0)*14ms); }
+/* Barras de avance y Gantt que se llenan al entrar a la pantalla */
+@keyframes am-llenar { from { transform:scaleX(0); } }
+.am-adelante .am-barra, .am-atras .am-barra, .am-lado .am-barra, .am-adelante .progress-fill, .am-atras .progress-fill, .am-lado .progress-fill,
+.am-adelante .am-gbarra, .am-atras .am-gbarra, .am-lado .am-gbarra{ transform-origin:left center; animation: am-llenar .8s var(--am-ease-ios) backwards; animation-delay:.3s; }
+@keyframes am-hoy { 0%,100%{ box-shadow:none; } 40%{ box-shadow:0 0 12px 3px var(--am-acento); } }
+.am-adelante .am-hoy, .am-atras .am-hoy, .am-lado .am-hoy{ animation: am-hoy 1.4s ease .9s 2; }
+/* Título de cada pantalla */
+.am-titulo{ animation: am-aparecer .45s var(--am-ease-ios) backwards; animation-delay: calc(var(--am-i,0)*45ms); }
+/* Campos del formulario escalonados */
+.am-hoja-escalonada > *{ animation: am-aparecer .42s var(--am-ease-ios) backwards; animation-delay: calc(var(--am-i,0)*26ms + 110ms); }
+.am-saliendo .am-hoja-escalonada > *{ animation:none; }
+/* Pestañas Antes / Durante / Después con resaltado que se desliza */
+.phase-tabs{ position:relative; }
+.phase-tabs .phase-tab{ position:relative; z-index:1; }
+.am-ind-fase{ position:absolute; top:4px; bottom:4px; left:0; border-radius:7px; z-index:0; pointer-events:none; background:var(--acento); transition: transform .42s var(--am-ease-resorte), width .3s var(--am-ease-ios); }
+html[data-tema="cisne"] .am-ind-fase{ background:linear-gradient(180deg,#EA3B26 0%,#C9281A 100%); box-shadow:0 4px 12px rgba(227,49,29,.30); }
+.phase-tabs.am-con-ind .phase-tab.active{ background:transparent !important; box-shadow:none !important; }
+/* Avisos de error */
+.toast.am-aviso-error{ background:#2A0E14 !important; color:#FFD9DF !important; border:1px solid #FF5470; }
+@keyframes am-sacudir { 0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-7px); } 40%{ transform:translateX(6px); } 60%{ transform:translateX(-4px); } 80%{ transform:translateX(2px); } }
+.toast.am-aviso-error{ animation: am-aviso-baja .45s var(--am-ease-resorte) both, am-sacudir .45s ease .4s; }
+/* Documento horizontal, como los PDF */
+.am-doc-horizontal .am-doc-hoja{ width:190px; height:134px; }
+.am-doc-horizontal .am-linea{ stroke-width:3.2; stroke-dasharray:140; stroke-dashoffset:140; }
+.am-doc-horizontal .am-linea.am-fina{ stroke-width:1.4; }
+.am-doc-horizontal .am-doc-logo{ opacity:0; animation: am-logo-ver .35s ease .05s forwards; }
+@keyframes am-logo-ver { to { opacity:1; } }
+.am-doc-horizontal.am-escribiendo .am-linea{ animation: am-trazo .32s var(--am-ease-ios) forwards; animation-delay: calc(var(--am-i) * 110ms); }
+.am-doc-horizontal .am-doc-sello{ top:66px; font-size:19px; }
+.am-doc-titulo{ font-size:14.5px; font-weight:800; color:#F2F1EC; margin-top:2px; }
+html:not([data-tema="cisne"]) .am-doc-titulo{ color:var(--texto); }
+.am-doc-horizontal .am-doc-txt{ font-size:12px; margin-top:2px; }
+@media (prefers-reduced-motion: reduce){
+  .am-latido, .am-ok-flash, .am-salto, .am-chips-entra > button, .am-barra, .am-gbarra, .progress-fill, .am-hoy, .am-titulo, .am-hoja-escalonada > *, .toast.am-aviso-error{ animation:none !important; }
+}
 </style>
 </head>
 <body>
@@ -1735,8 +1781,8 @@ App.Charts = (function(){
       const est = a._estado || estadoActividad(a, hoyStr), col = HEX_ESTADO[est], av = avanceActividad(a);
       const left = diasEntre(ini, a.fechaInicio)*px, width = Math.max((diasEntre(a.fechaInicio, a.fechaFin)+1)*px - 2, 10);
       const top = HEAD + idx*ROW + 9;
-      barras += '<div onclick="'+(opts.onclick? opts.onclick(a) : 'App.Handlers.registrarAvanceActividad(\''+inst.id+'\',\''+a.id+'\')')+'"" style="position:absolute; left:'+left+'px; top:'+top+'px; width:'+width+'px; height:22px; border-radius:6px; background:'+col+'33; border:1px solid '+col+'; overflow:hidden; cursor:pointer;">'+
-        '<div style="height:100%; width:'+av+'%; background:'+col+';"></div>'+
+      barras += '<div class="am-gbarra" onclick="'+(opts.onclick? opts.onclick(a) : 'App.Handlers.registrarAvanceActividad(\''+inst.id+'\',\''+a.id+'\')')+'"" style="position:absolute; left:'+left+'px; top:'+top+'px; width:'+width+'px; height:22px; border-radius:6px; background:'+col+'33; border:1px solid '+col+'; overflow:hidden; cursor:pointer;">'+
+        '<div class="am-barra" style="height:100%; width:'+av+'%; background:'+col+';"></div>'+
         '<div style="position:absolute; inset:0; display:flex; align-items:center; padding:0 6px; font-size:10px; font-weight:700; color:var(--texto); white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.6);">'+av+'%</div>'+
       '</div>';
       nombres += '<div style="height:'+ROW+'px; display:flex; flex-direction:column; justify-content:center; padding:0 8px; border-bottom:1px solid var(--borde);">'+
@@ -1755,7 +1801,7 @@ App.Charts = (function(){
         '<div style="position:relative; width:'+totalW+'px; height:'+(HEAD+altoCuerpo)+'px;">'+
           '<div style="position:absolute; left:0; right:0; top:'+HEAD+'px; border-top:1px solid var(--borde);"></div>'+
           fondo+cabecera+filasFondo+lineaEntrega+
-          '<div style="position:absolute; left:'+xHoy+'px; top:0; bottom:0; width:2px; background:var(--acento); z-index:2;"></div>'+
+          '<div class="am-hoy" style="position:absolute; left:'+xHoy+'px; top:0; bottom:0; width:2px; background:var(--acento); z-index:2;"></div>'+
           '<div style="position:absolute; left:'+(xHoy-14)+'px; top:'+(HEAD-12)+'px; font-size:8.5px; font-weight:800; color:var(--sobre-acento); background:var(--acento); padding:1px 4px; border-radius:4px; z-index:3;">HOY</div>'+
           barras+
         '</div>'+
@@ -1781,7 +1827,7 @@ App.Charts = (function(){
       const imp = (perd>0 && durH>0) ? Math.round(perd/durH*100) : 0;
       const dias = (a.fechaInicio&&a.fechaFin) ? diasEntre(a.fechaInicio, a.fechaFin)+1 : null;
       const unid = a.unidades && a.unidades.cantidad ? (a.avances||[]).reduce((s,x)=>s+(x.cantidad||0),0)+' / '+a.unidades.cantidad+' '+esc(a.unidades.unidad||'') : '';
-      return '<div class="envio-card" style="border-left:3px solid '+col+';">'+
+      return '<div class="envio-card" data-id="act-'+a.id+'" style="border-left:3px solid '+col+';">'+
         '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">'+
           '<div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
           '<span style="font-family:\'JetBrains Mono\',monospace; font-size:9.5px; font-weight:700; color:'+col+'; white-space:nowrap;">'+LABEL_ESTADO[est].toUpperCase()+'</span>'+
@@ -1861,17 +1907,28 @@ App.UIHelpers = (function(){
   function toast(msg){
     document.querySelectorAll('.toast').forEach(t=>t.remove());
     const el = document.createElement('div');
-    el.className='toast am-aviso'; el.textContent=msg;
+    el.className='toast am-aviso'+(/^\s*⚠/.test(String(msg))? ' am-aviso-error' : ''); el.textContent=msg;
+    if(/^\s*⚠/.test(String(msg)) && App.Anim) App.Anim._errores++;
     document.body.appendChild(el);
     setTimeout(()=> AnimMarcado.salidaAviso(el), 2400);
   }
-  function openModal(title, bodyHtml, onMount){
+  function openModal(title, bodyHtml, onMount, opciones){
+    const viva = document.getElementById('modalOverlay');
+    if(opciones && opciones.enLugar && viva && viva.dataset.titulo===title && !viva.classList.contains('am-saliendo')){
+      const sheet = viva.querySelector('.modal-sheet'); const y = sheet.scrollTop;
+      const antes = App.Anim? App.Anim.huellas(sheet) : null;
+      sheet.innerHTML = '<div class="modal-title">'+title+'</div>'+bodyHtml; sheet.scrollTop = y;
+      if(antes) App.Anim.compararYAnimar(sheet, antes);
+      _conectarGuardar(viva); if(onMount) onMount(viva); return;
+    }
     // Nunca dos ventanas a la vez: la anterior (aunque esté saliendo) se quita al instante
     document.querySelectorAll('.modal-overlay').forEach(x=>x.remove());
     const overlay = document.createElement('div');
     overlay.className='modal-overlay am-fondo-hoja'; overlay.id='modalOverlay';
     overlay.onclick = (e)=>{ if(e.target===overlay) closeModal(); };
+    overlay.dataset.titulo = title;
     overlay.innerHTML = '<div class="modal-sheet am-hoja"><div class="modal-title">'+title+'</div>'+bodyHtml+'</div>';
+    if(!AnimMarcado.REDUCIDO){ const sh = overlay.querySelector('.modal-sheet'); sh.classList.add('am-hoja-escalonada'); Array.from(sh.children).forEach((el,k)=> el.style.setProperty('--am-i', Math.min(k,14))); }
     document.body.appendChild(overlay);
     AnimMarcado.abrirHoja(document.getElementById('app'));
     _conectarGuardar(overlay);
@@ -1995,7 +2052,7 @@ App.Views.ajustes = async function(){
       })()+
       '<div class="card"><h3>Tu nombre</h3>'+
         '<input type="text" id="ajNombre" value="'+esc(nombreCfg?nombreCfg.value:'Isaac Zamora')+'">'+
-        '<button class="btn-outline" onclick="App.Handlers.guardarMiNombre()">Guardar</button>'+
+        '<button class="btn-outline" data-am-guardar onclick="App.Handlers.guardarMiNombre()">Guardar</button>'+
       '</div>'+
 
       '<div class="card"><h3>Datos de la empresa</h3>'+
@@ -2003,7 +2060,7 @@ App.Views.ajustes = async function(){
         '<label>Nombre de la empresa</label><input type="text" id="ajEmpresa" value="'+esc(empresaCfg?empresaCfg.value:'')+'" placeholder="Ej. Colineal">'+
         (logoCfg && logoCfg.value? '<img src="'+logoCfg.value+'" style="max-height:50px; margin-bottom:8px; display:block; border-radius:6px;">' : '')+
         '<label>Logo (opcional)</label><input type="file" id="ajLogo" accept="image/*">'+
-        '<button class="btn-outline" onclick="App.Handlers.guardarEmpresa()">Guardar datos de empresa</button>'+
+        '<button class="btn-outline" data-am-guardar onclick="App.Handlers.guardarEmpresa()">Guardar datos de empresa</button>'+
       '</div>'+
 
       '<div class="card"><h3>⏱️ Tiempos estándar de instalación</h3>'+
@@ -2024,7 +2081,7 @@ App.Views.ajustes = async function(){
       '<div class="card"><h3>Checklist estándar</h3>'+
         '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;">Uno por línea. Es el que se carga con el botón "Usar checklist estándar" en cada proyecto nuevo.</div>'+
         '<textarea id="ajChecklist" style="min-height:140px;">'+esc(checklistCfg? checklistCfg.value : App.Handlers.checklistEstandarDefault().join('\n'))+'</textarea>'+
-        '<button class="btn-outline" onclick="App.Handlers.guardarChecklistEstandar()">Guardar checklist estándar</button>'+
+        '<button class="btn-outline" data-am-guardar onclick="App.Handlers.guardarChecklistEstandar()">Guardar checklist estándar</button>'+
       '</div>'+
 
       '<div class="card"><h3>Catálogos</h3>'+
@@ -2035,7 +2092,7 @@ App.Views.ajustes = async function(){
       '<div class="card"><h3>Avanzado · API Key de IA (opcional)</h3>'+
         '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;">No es necesaria. Solo sirve para que una IA estime horas de trabajos que no tienes en "Tiempos estándar" ni en tu historial. Puedes dejarla vacía.</div>'+
         '<input type="text" id="ajApiKey" value="'+esc(apiCfg?apiCfg.value:'')+'" placeholder="sk-ant-...">'+
-        '<button class="btn-outline" onclick="App.Handlers.guardarApiKey()">Guardar API Key</button>'+
+        '<button class="btn-outline" data-am-guardar onclick="App.Handlers.guardarApiKey()">Guardar API Key</button>'+
       '</div>'+
 
       '<div class="card"><h3>📧 Correo para reportes</h3>'+
@@ -2044,7 +2101,7 @@ App.Views.ajustes = async function(){
         '<label>Destinatarios (separados por coma)</label><input type="text" id="ajCorreoDest" value="'+esc(correoDest)+'" placeholder="gerencia@colineal.com, cliente@empresa.com">'+
         '<label>Mensaje predeterminado</label><textarea id="ajCorreoMsg" style="min-height:130px;">'+esc(correoMsg)+'</textarea>'+
         '<div style="font-size:11px; color:var(--texto-suave); margin:-4px 0 8px;">Se reemplazan solos: {tipo} {proyecto} {periodo} {nombre} {empresa}</div>'+
-        '<button class="btn-outline" onclick="App.Handlers.guardarCorreo()">Guardar correo</button>'+
+        '<button class="btn-outline" data-am-guardar onclick="App.Handlers.guardarCorreo()">Guardar correo</button>'+
       '</div>'+
 
       '<div class="card"><h3>⭐ Calificación de calidad</h3>'+
@@ -2054,7 +2111,7 @@ App.Views.ajustes = async function(){
           '<div style="flex:1;"><label>🟡 Con detalles</label><input type="text" inputmode="numeric" id="ajPesoAm" value="'+(App.Elementos? App.Elementos.peso() : 70)+'"></div>'+
           '<div style="flex:1;"><label>🔴 Mal</label><input type="text" value="0" disabled></div>'+
         '</div>'+
-        '<button class="btn-outline" onclick="App.Handlers.guardarPesoCalidad()">Guardar puntaje</button>'+
+        '<button class="btn-outline" data-am-guardar onclick="App.Handlers.guardarPesoCalidad()">Guardar puntaje</button>'+
       '</div>'+
 
       '<div class="card"><h3>🕗 Jornada de trabajo</h3>'+
@@ -2063,7 +2120,7 @@ App.Views.ajustes = async function(){
           '<div style="flex:1;"><label>Horas por jornada</label><input type="text" inputmode="decimal" id="ajJorHoras" value="'+String(jor.horas).replace('.',',')+'"></div>'+
           '<div style="flex:1;"><label>Días por semana</label><select id="ajJorDias">'+[[5,'Lunes a viernes'],[6,'Lunes a sábado'],[7,'Todos los días']].map(o=>'<option value="'+o[0]+'"'+(jor.dias===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
         '</div>'+
-        '<button class="btn-outline" onclick="App.Handlers.guardarJornada()">Guardar jornada</button>'+
+        '<button class="btn-outline" data-am-guardar onclick="App.Handlers.guardarJornada()">Guardar jornada</button>'+
       '</div>'+
 
       '<div class="card"><h3>💾 Copia de seguridad de la app</h3>'+
@@ -2325,7 +2382,7 @@ App.Views._transporteLista = function(inst, lista){
   };
   return lista.map(t=>{
     const estadoInfo = TRANSPORTE_ESTADO[t.estado] || TRANSPORTE_ESTADO.solicitado;
-    return '<div class="envio-card">'+
+    return '<div class="envio-card" data-id="tra-'+t.id+'">'+
       '<div style="display:flex; justify-content:space-between; align-items:flex-start;">'+
         '<div style="font-size:13px; font-weight:700;">'+(t.modo==='camion'?'🚛':'🚗')+' '+esc(t.empresa||t.modo)+'</div>'+
         '<span class="stamp '+estadoInfo.clase+'" style="transform:none;">'+estadoInfo.label+'</span>'+
@@ -2367,7 +2424,7 @@ App.Views.faseAntes = async function(inst){
 
   const propiasLlevo = (inst.herramientasPropias||[]).filter(h=>h.llevar).length;
   const propiasHtml = (inst.herramientasPropias||[]).map(h=>
-    '<div class="check-row">'+
+    '<div class="check-row" data-id="hp-'+h.id+'">'+
       '<button class="checkbox '+(h.llevar?'on':'')+'" onclick="App.Handlers.toggleHerramientaPropia(\''+inst.id+'\',\''+h.id+'\')"></button>'+
       '<div class="check-label">'+esc(h.nombre)+((h.cantidad||1)>1? ' <b>×'+h.cantidad+'</b>':'')+(h.asignadoA? ' <span style="color:var(--info); font-size:11px;">· '+(h.asignadoA.tipo==='proyecto'?'📦 proyecto':(h.asignadoA.tipo==='grupo'?'👥 ':'👤 ')+esc(h.asignadoA.nombre))+'</span>':'')+'</div>'+
       '<button class="check-del" title="Devolver a bodega" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'herramientasPropias\',\''+h.id+'\')">✕</button>'+
@@ -2385,7 +2442,7 @@ App.Views.faseAntes = async function(inst){
   const comprasOrden = (inst.herramientasComprar||[]).slice().sort((a,b)=> (a.estado==='comprado')-(b.estado==='comprado'));
   const comprarHtml = comprasOrden.map(h=>{
     const ok = h.estado==='comprado';
-    return '<div class="envio-card" style="border-left:3px solid '+(ok?'var(--exito)':'var(--acento-fuerte)')+';'+(ok?' opacity:.7;':'')+'">'+
+    return '<div class="envio-card" data-id="com-'+h.id+'" style="border-left:3px solid '+(ok?'var(--exito)':'var(--acento-fuerte)')+';'+(ok?' opacity:.7;':'')+'">'+
       '<div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-size:13px; font-weight:700;">'+esc(h.nombre)+'</div><b style="font-family:\'JetBrains Mono\',monospace;">$'+num(h.costo).toFixed(2)+'</b></div>'+
       '<div style="font-size:11px; color:var(--texto-suave); margin-top:3px;">Para: '+_asigTxt(h.asignadoA)+(h.fechaAnotado? ' · Anotado '+fmtFecha(h.fechaAnotado):'')+(ok? ' · <b style="color:var(--exito);">Comprado '+fmtFecha(h.fechaCompra||'')+'</b>':' · <b style="color:var(--acento-fuerte);">Pendiente</b>')+'</div>'+
       '<div style="display:flex; gap:6px; margin-top:7px;">'+
@@ -2399,7 +2456,7 @@ App.Views.faseAntes = async function(inst){
   const solicitudesHtml = solOrden.map(s=>{
     const ok = s.estado==='solucionado';
     const dias = (!ok && s.fechaSolicitud) ? Math.round((new Date(hoy()+'T00:00:00')-new Date(s.fechaSolicitud+'T00:00:00'))/86400000) : null;
-    return '<div class="envio-card" style="border-left:3px solid '+(ok?'var(--exito)':'var(--peligro)')+';'+(ok?' opacity:.7;':'')+'">'+
+    return '<div class="envio-card" data-id="sol-'+s.id+'" style="border-left:3px solid '+(ok?'var(--exito)':'var(--peligro)')+';'+(ok?' opacity:.7;':'')+'">'+
       '<div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-size:13px; font-weight:700;">'+esc(s.descripcion)+'</div><b style="white-space:nowrap;">×'+(s.cantidad||1)+'</b></div>'+
       '<div style="font-size:11px; color:var(--texto-suave); margin-top:3px; line-height:1.5;">'+
         'A: <b style="color:var(--texto);">'+esc(s.destino||'-')+'</b>'+(s.fechaSolicitud? ' · Solicitado '+fmtFecha(s.fechaSolicitud):'')+
@@ -2494,7 +2551,7 @@ App.Views.faseAntes = async function(inst){
     '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin documentos adjuntos</div>';
 
   const checklistHtml = (inst.checklistGeneral||[]).map(c=>
-    '<div class="check-row">'+
+    '<div class="check-row" data-id="chk-'+c.id+'">'+
       '<button class="checkbox '+(c.hecho?'on':'')+'" onclick="App.Handlers.toggleChecklistGeneral(\''+inst.id+'\',\''+c.id+'\')"></button>'+
       '<div class="check-label">'+esc(c.texto)+(c.hecho && c.fechaCompletado? ' <span style="color:var(--exito); font-size:10.5px;">· hecho '+fmtFecha(c.fechaCompletado)+'</span>':'')+'</div>'+
       '<button class="check-del" onclick="App.Handlers.eliminarSub(\''+inst.id+'\',\'checklistGeneral\',\''+c.id+'\')">✕</button>'+
@@ -2577,7 +2634,7 @@ App.Views.faseDurante = async function(inst){
   const filasEquipo = equipo.map(m=>{
     const ab = abiertoDe(m), mins = minHoy(m), marco = regsHoy.some(r=>r.trabajadorId===m.id && r.esExtra===m.esExtra);
     const estado = ab ? '<span style="color:var(--exito); font-weight:700;">En sitio desde '+ab.entrada+'</span>' : (marco ? 'Salió · '+App.Repo.fmtMinutos(mins)+' hoy' : '<span style="color:var(--acento-fuerte);">Sin marcar hoy</span>');
-    return '<button onclick="App.Handlers.checar(\''+inst.id+'\',\''+m.id+'\','+m.esExtra+')" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 10px; margin-bottom:6px; border-radius:10px; border:1.5px solid '+(ab?'var(--exito)':'var(--borde)')+'; background:'+(ab?'var(--exito-fondo)':'var(--superficie)')+'; text-align:left; color:var(--texto);">'+
+    return '<button data-id="asis-'+m.id+'" onclick="App.Handlers.checar(\''+inst.id+'\',\''+m.id+'\','+m.esExtra+')" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 10px; margin-bottom:6px; border-radius:10px; border:1.5px solid '+(ab?'var(--exito)':'var(--borde)')+'; background:'+(ab?'var(--exito-fondo)':'var(--superficie)')+'; text-align:left; color:var(--texto);">'+
       '<div class="avatar '+(m.extra?'extra':'')+'" style="width:30px;height:30px;font-size:12px; flex-shrink:0;">'+iniciales(m.nombre)+'</div>'+
       '<div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13.5px;">'+esc(m.nombre)+'</div><div style="font-size:11px; color:var(--texto-suave);">'+estado+'</div></div>'+
       '<div style="font-weight:800; font-size:12px; color:'+(ab?'var(--peligro)':'var(--acento)')+'; white-space:nowrap;">'+(ab?'SALIDA':'ENTRADA')+'</div>'+
@@ -2591,11 +2648,11 @@ App.Views.faseDurante = async function(inst){
     const av = avanceActividad(a), atras = a.fechaFin<hoyStr;
     const col = atras? 'var(--peligro)' : 'var(--g-encurso)';
     const restan = Math.round((new Date(a.fechaFin+'T00:00:00')-new Date(hoyStr+'T00:00:00'))/86400000);
-    return '<div class="envio-card" style="border-left:3px solid '+col+';">'+
+    return '<div class="envio-card" data-id="act-'+a.id+'" style="border-left:3px solid '+col+';">'+
       '<div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
       '<span style="'+mono+' font-size:10px; font-weight:700; color:'+col+'; white-space:nowrap;">'+(atras? 'ATRASADA '+(-restan)+'d' : (restan===0?'TERMINA HOY':'QUEDAN '+restan+'d'))+'</span></div>'+
       '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">'+(a.asignado? (a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre)+' · ':'')+'hasta '+fmtFecha(a.fechaFin)+'</div>'+
-      '<div style="display:flex; align-items:center; gap:8px; margin-top:7px;"><div style="flex:1; height:8px; background:var(--fondo-alt); border-radius:5px; overflow:hidden;"><div style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:12px;">'+av+'%</b></div>'+
+      '<div style="display:flex; align-items:center; gap:8px; margin-top:7px;"><div style="flex:1; height:8px; background:var(--fondo-alt); border-radius:5px; overflow:hidden;"><div class="am-barra" style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:12px;">'+av+'%</b></div>'+
       '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Handlers.registrarAvanceActividad(\''+inst.id+'\',\''+a.id+'\')">📈 Registrar avance de hoy</button>'+
     '</div>';
   }).join('') || '<div class="empty" style="padding:12px 0;">No hay actividades programadas para hoy.'+(acts.length?'':'<br>Agrégalas en <b>Antes → Cronograma</b>.')+'</div>';
@@ -2641,7 +2698,7 @@ App.Views.faseDurante = async function(inst){
   const bitOrden = (inst.bitacoraDiaria||[]).slice().sort((a,b)=> (b.fecha+(b.hora||'')).localeCompare(a.fecha+(a.hora||'')));
   const bitacoraHtml = bitOrden.slice(0,15).map(b=>{
     const an = actNombre(b.actividadId), hp = num(b.horasPerdidas);
-    return '<div class="bitacora-entry"><div class="bitacora-fecha" style="display:flex; justify-content:space-between;"><span>'+fmtFecha(b.fecha)+(b.hora? ' · '+b.hora:'')+(b.desvio?' · DESVÍO':'')+'</span>'+
+    return '<div class="bitacora-entry" data-id="bit-'+b.id+'"><div class="bitacora-fecha" style="display:flex; justify-content:space-between;"><span>'+fmtFecha(b.fecha)+(b.hora? ' · '+b.hora:'')+(b.desvio?' · DESVÍO':'')+'</span>'+
       '<span><button class="check-del" style="color:var(--texto-suave);" onclick="App.Handlers.editarBitacora(\''+inst.id+'\',\''+b.id+'\')">✏️</button></span></div>'+
       '<div class="bitacora-txt">'+esc(b.texto)+'</div>'+
       (an||hp? '<div style="font-size:11px; color:'+(hp?'var(--peligro)':'var(--acento)')+'; margin-top:4px;">'+(an? '📅 '+esc(an):'')+(hp? ' · ⏱ '+hp+' h perdidas':'')+'</div>':'')+
@@ -2655,7 +2712,7 @@ App.Views.faseDurante = async function(inst){
   const probOrden = (inst.problemas||[]).slice().sort((a,b)=> (a.estado==='resuelto')-(b.estado==='resuelto') || (b.fecha||'').localeCompare(a.fecha||''));
   const problemasHtml = probOrden.slice(0,15).map(p=>{
     const an = actNombre(p.actividadId), hp = num(p.horasPerdidas), res = p.estado==='resuelto';
-    return '<div class="problema-card '+(res?'resuelto':'')+'">'+
+    return '<div data-id="pro-'+p.id+'" class="problema-card '+(res?'resuelto':'')+'">'+
       '<div class="problema-top"><span>'+String(p.prioridad||'').toUpperCase()+(res?' · RESUELTO '+(p.fechaSolucion?fmtFecha(p.fechaSolucion):''):'')+'</span><span>'+fmtFecha(p.fecha)+'</span></div>'+
       '<div class="problema-txt">'+esc(p.texto)+'</div>'+
       (an||hp? '<div style="font-size:11px; margin-top:4px;">'+(an? '📅 '+esc(an):'')+(hp? ' · ⏱ '+hp+' h perdidas':'')+'</div>':'')+
@@ -2672,7 +2729,7 @@ App.Views.faseDurante = async function(inst){
     const k = e.calif || (e.cumplimiento==null? null : (e.cumplimiento>=85?'ok':(e.cumplimiento>=60?'falta':'no')));
     const color = k? App.Elementos.ESTADOS[k].color : 'var(--texto-suave)';
     const etiqueta = k? ({ok:'🟢 Bien', falta:'🟡 Con detalles', no:'🔴 Mal'})[k] : '—';
-    return '<div class="envio-card"><div style="display:flex; justify-content:space-between; align-items:center;">'+
+    return '<div class="envio-card" data-id="eva-'+e.id+'"><div style="display:flex; justify-content:space-between; align-items:center;">'+
       '<div style="font-size:13px; font-weight:700;">'+(e.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(e.asignado.nombre)+'</div>'+
       '<div style="display:flex; align-items:center; gap:6px;"><b style="font-size:13px; color:'+color+';">'+etiqueta+'</b><button class="check-del" style="color:var(--texto-suave);" onclick="App.Handlers.editarEvaluacion(\''+inst.id+'\',\''+e.id+'\')">✏️</button></div></div>'+
       '<div style="font-size:10.5px; color:var(--texto-suave); margin-top:2px;">'+fmtFecha(e.fecha)+'</div>'+
@@ -2892,7 +2949,7 @@ App.Share = (function(){
     const cuerpo = _rellenar(plantilla, d);
     const asuntoFinal = asunto + (d.proyecto? ' - '+d.proyecto : '') + (d.periodo? ' - '+d.periodo : '');
     pendiente = {blob, filename, asunto: asuntoFinal, cuerpo, destinatarios, propio};
-    await AnimMarcado.documento({sello: /acta/i.test(asunto)? 'ACTA' : 'LISTO', texto: 'Generando '+String(asunto).toLowerCase()+'…', textoListo: asunto+' listo'});
+    await App.Anim.documento({asunto, sello: (datos&&datos.sello) || App.Anim.selloDe(asunto), titulo: asunto, subtitulo: (d.proyecto? d.proyecto : '')+(d.periodo? ' · '+d.periodo : '')});
     openModal('📄 Documento listo',
       '<div style="font-size:13px; font-weight:700; margin-bottom:2px;">'+esc(asunto)+'</div><div style="font-size:11.5px; color:var(--texto-suave); margin-bottom:12px;">'+esc(filename)+'</div>'+
       '<button class="btn-primary" data-am-sin-check onclick="App.Share._enviarCorreo()">📧 Enviar por correo</button>'+
@@ -4758,7 +4815,7 @@ App.Handlers = (function(){
       {nombre: recibe.nombre, cargo: recibe.cargo||'Cliente', extra: recibe.cedula? 'C.I. '+recibe.cedula : '', firma: i.acta.firmaCliente}
     ]);
     P.finalizar(ctx);
-    await App.Share.prepararEnvio(ctx.doc, 'Acta_Entrega_'+(i.nombre||'').replace(/[^\wÁÉÍÓÚÑáéíóúñ]+/g,'_')+'_'+fecha+'.pdf', 'Acta de entrega-recepción', {proyecto:i.nombre, periodo:fmtFecha(fecha), tipo:'acta de entrega-recepción'});
+    await App.Share.prepararEnvio(ctx.doc, 'Acta_Entrega_'+(i.nombre||'').replace(/[^\wÁÉÍÓÚÑáéíóúñ]+/g,'_')+'_'+fecha+'.pdf', 'Acta de entrega-recepción', {proyecto:i.nombre, periodo:fmtFecha(fecha), tipo:'acta de entrega-recepción', sello: (i.acta.firmaCliente && i.acta.firmaResponsable)? 'FIRMADO' : 'ACTA'});
   }
   return {
     eliminarSub, guardarCotizacion,
@@ -4852,6 +4909,7 @@ App.Handlers.exportarBackup = async function(){
   a.remove();
   URL.revokeObjectURL(url);
   App.UIHelpers.toast('Respaldo descargado');
+  if(App.Anim) App.Anim.documento({sello:'RESPALDO', titulo:'Copia de seguridad', subtitulo:'Toda la información de la app'});
 };
 App.Handlers.importarBackup = async function(){
   const fileInput = document.getElementById('ajRestoreFile');
@@ -5101,7 +5159,37 @@ window.addEventListener('unhandledrejection', (ev)=>{
 });
 App.Anim = (function(){
   const PROF = {panel:0, midia:1, otra:1, proyecto:1, acta:2, fisc:2};
-  let ultimaClave = null, ultimaProf = null, pendiente = false;
+  let ultimaClave = null, ultimaProf = null, pendiente = false, renders = 0, mapaPrev = null;
+  const esperar = AnimMarcado.esperar;
+  // Huella de cada elemento con data-id (solo los que no contienen otros con data-id)
+  function _hash(s){ let h = 5381; for(let i=0;i<s.length;i++) h = ((h<<5)+h + s.charCodeAt(i))|0; return h; }
+  function _norm(el){ return el.outerHTML.replace(/ am-[a-z-]+/g,'').replace(/--am-[a-z]+:\s*[^;"]+;?\s*/g,'').replace(/<span class="am-onda"[^>]*><\/span>/g,''); }
+  function huellas(raiz){
+    const m = new Map();
+    raiz.querySelectorAll('[data-id]').forEach(el=>{ if(el.querySelector('[data-id]')) return; m.set(el.dataset.id, _hash(_norm(el))); });
+    return m;
+  }
+  function _marcar(el, clase, k){
+    el.style.setProperty('--am-k', Math.min(k, 30));
+    el.classList.remove(clase); void el.offsetWidth; el.classList.add(clase);
+    setTimeout(()=> el.classList.remove(clase), 1900 + Math.min(k,30)*45);
+  }
+  function compararYAnimar(raiz, antes){
+    if(AnimMarcado.REDUCIDO || !antes) return;
+    const lista = []; let k = 0;
+    raiz.querySelectorAll('[data-id]').forEach(el=>{
+      if(el.querySelector('[data-id]')) return;
+      const id = el.dataset.id, h = _hash(_norm(el));
+      if(!antes.has(id)) lista.push([el, 'am-destello']);
+      else if(antes.get(id)!==h) lista.push([el, /^(el|ent)-/.test(id)? 'am-salto' : (/^asis/.test(id) && /var\(--exito\)|#5FC48A/i.test(el.getAttribute('style')||'')? 'am-ok-flash' : 'am-latido')]);
+    });
+    if(!lista.length || lista.length > 60) return;
+    const aplicar = (intentos)=>{
+      if(document.body.classList.contains('am-hoja-abierta') && intentos < 25 && !raiz.closest('.modal-sheet')){ setTimeout(()=>aplicar(intentos+1), 120); return; }
+      lista.forEach(([el, cl])=>{ if(el.isConnected) _marcar(el, cl, k++); });
+    };
+    aplicar(0);
+  }
   function claveActual(){
     const e = App.Router._estado ? App.Router._estado() : {vista:'panel'};
     const titulo = (document.querySelector('#app .det-title, #app .topbar h1')||{}).textContent || '';
@@ -5112,8 +5200,13 @@ App.Anim = (function(){
     const app = document.getElementById('app'); if(!app) return;
     const k = claveActual();
     const contenido = app.querySelector('.content');
-    _barra(app);
-    if(k.clave === ultimaClave) return;            // solo se refrescó tras guardar: no animar
+    _barra(app); _fases(app);
+    const nuevas = huellas(app);
+    if(k.clave === ultimaClave){                   // solo se refrescó tras guardar: animar únicamente lo que cambió
+      compararYAnimar(app, mapaPrev); mapaPrev = nuevas; return;
+    }
+    mapaPrev = nuevas;
+    if(!AnimMarcado.REDUCIDO) app.querySelectorAll('.topbar .det-title, .topbar .det-cliente, .topbar h1, .topbar .sub, .topbar .eyebrow, .topbar .back').forEach((el,i)=>{ el.style.setProperty('--am-i', i); el.classList.remove('am-titulo'); void el.offsetWidth; el.classList.add('am-titulo'); });
     let dir = 'lado';
     if(ultimaProf!=null){ dir = k.prof > ultimaProf ? 'adelante' : (k.prof < ultimaProf ? 'atras' : 'lado'); }
     const mismaVista = ultimaClave && ultimaClave.split('|')[0]===k.vista && ultimaClave.split('|')[1]===k.clave.split('|')[1];
@@ -5122,6 +5215,23 @@ App.Anim = (function(){
     contenido.querySelectorAll('.kpi .num').forEach(n=>{ const t=n.textContent.trim(); if(/^\d+$/.test(t)) n.classList.add('am-cifra'); else if(/^\d+%$/.test(t)) n.classList.add('am-cifra-pct'); });
     AnimMarcado.entrarVista(contenido, mismaVista? 'lado' : dir, {recorte: app, selectorCifras: '.am-cifra'});
     AnimMarcado.contarCifras(contenido, '.am-cifra-pct', n=> Math.round(n)+'%');
+  }
+  const fasePrev = {};
+  function _fases(app){
+    const cont = app.querySelector('.phase-tabs'); if(!cont) return;
+    const tabs = Array.from(cont.querySelectorAll('.phase-tab')); const idx = tabs.findIndex(t=>t.classList.contains('active')); if(idx<0) return;
+    let ind = cont.querySelector('.am-ind-fase');
+    if(!ind){ ind = document.createElement('span'); ind.className = 'am-ind-fase'; cont.insertBefore(ind, cont.firstChild); }
+    cont.classList.add('am-con-ind');
+    const e = App.Router._estado ? App.Router._estado() : {}; const clave = e.instId||'';
+    const pos = (i)=> 'translateX('+tabs[i].offsetLeft+'px)';
+    const prev = fasePrev[clave];
+    ind.style.width = tabs[idx].offsetWidth+'px';
+    if(prev!=null && prev!==idx && !AnimMarcado.REDUCIDO){
+      ind.style.transition = 'none'; ind.style.transform = pos(prev); void ind.offsetWidth; ind.style.transition = '';
+      requestAnimationFrame(()=>{ ind.style.transform = pos(idx); });
+    } else ind.style.transform = pos(idx);
+    fasePrev[clave] = idx;
   }
   let tabPrev = null;
   function _barra(app){
@@ -5137,13 +5247,67 @@ App.Anim = (function(){
     } else AnimMarcado.moverIndicador(barra, items, idx, false);
     tabPrev = idx;
   }
+  function selloDe(asunto){
+    const a = String(asunto||'').toLowerCase();
+    if(a.includes('diario')) return 'DIARIO'; if(a.includes('semanal')) return 'SEMANAL'; if(a.includes('mensual')) return 'MENSUAL';
+    if(a.includes('general')) return 'GENERAL'; if(a.includes('resumen del d')) return 'MI DÍA'; if(a.includes('hora')) return 'HORAS';
+    if(a.includes('acta')) return 'ACTA'; return 'LISTO';
+  }
+  function documento(o){
+    o = o||{};
+    if(AnimMarcado.REDUCIDO) return esperar(150);
+    const capa = document.createElement('div');
+    capa.className = 'am-doc-capa am-doc-horizontal'; capa.setAttribute('aria-hidden','true');
+    const L = [];
+    L.push('<rect x="10" y="9" width="13" height="15" rx="1.5" fill="var(--am-acento)" class="am-doc-logo"/>');
+    L.push('<path class="am-linea am-cab" style="--am-i:0" d="M28 13 H70"/>');
+    L.push('<path class="am-linea" style="--am-i:1" d="M28 20 H56"/>');
+    L.push('<path class="am-linea am-cab am-fina" style="--am-i:2" d="M10 30 H140"/>');
+    [42,52,62,72,82].forEach((y,i)=>{ L.push('<path class="am-linea" style="--am-i:'+(3+i)+'" d="M10 '+y+' H140"/>'); });
+    [52,92].forEach((x,i)=>{ L.push('<path class="am-linea am-fina" style="--am-i:'+(8+i)+'" d="M'+x+' 38 V86"/>'); });
+    L.push('<path class="am-linea" style="--am-i:10" d="M96 96 H140"/>');
+    capa.innerHTML = '<div class="am-doc-tarjeta"><svg class="am-doc-hoja" viewBox="0 0 150 106"><rect class="am-fondo-papel" width="150" height="106" rx="6"/>'+L.join('')+'</svg>'+
+      '<div class="am-doc-sello"></div><div class="am-doc-titulo"></div><div class="am-doc-txt"></div></div>';
+    capa.querySelector('.am-doc-sello').textContent = o.sello || 'LISTO';
+    capa.querySelector('.am-doc-titulo').textContent = o.titulo || 'Documento';
+    const txt = capa.querySelector('.am-doc-txt'); txt.textContent = o.subtitulo || 'Generando PDF…';
+    document.body.appendChild(capa); void capa.offsetWidth;
+    capa.classList.add('am-ver', 'am-escribiendo');
+    return new Promise(res=>{
+      setTimeout(()=>{ capa.classList.add('am-sellado'); }, 1450);
+      setTimeout(()=> capa.classList.remove('am-ver'), 2050);
+      setTimeout(()=>{ capa.remove(); res(); }, 2350);
+    });
+  }
+  // Botones "Guardar" fuera de ventanas (Ajustes): círculo → ✓, y vuelven a su estado
+  function _guardarFuera(b, ev){
+    const attr = (b.getAttribute('onclick')||'').trim();
+    let fn = null; try{ fn = new Function('event', 'return ('+attr.replace(/;\s*$/,'')+');'); }catch(e){ return; }
+    ev.stopImmediatePropagation(); ev.preventDefault();
+    const err0 = api._errores;
+    AnimMarcado.botonConCheck(b, async ()=>{ const r = fn.call(b, ev); if(r && r.then) await r; return api._errores===err0; }, {minimoMs: 450})
+      .then(ok=>{ if(ok) setTimeout(()=> AnimMarcado.restaurarBoton(b), 900); })
+      .catch(e=>{ if(!(e&&e._avisado)) console.error(e); });
+  }
   function iniciar(){
-    AnimMarcado.activarToques('.btn-primary, .btn-outline, .kpi-action, .phase-tab, .tabbar-item, .clock-btn, .brand-plate, .fab, .content button, .modal-sheet button, .check-row[onclick], .card[onclick]');
+    // Doble toque fantasma: un 2.º toque en el mismo lugar justo después de que la pantalla cambió no se acepta
+    let ult = {t:0, x:-99, y:-99, r:-1, el:null};
+    document.addEventListener('click', (ev)=>{
+      const b = ev.target.closest && ev.target.closest('[data-am-guardar]');
+      const el = ev.target.closest && ev.target.closest('button, a, [onclick]'); if(!el) return;
+      const ahora = performance.now(), cerca = Math.abs(ev.clientX-ult.x)<28 && Math.abs(ev.clientY-ult.y)<28;
+      if(ahora-ult.t < 450 && (el===ult.el || (cerca && renders>ult.r))){ ev.stopImmediatePropagation(); ev.preventDefault(); return; }
+      ult = {t:ahora, x:ev.clientX, y:ev.clientY, r:renders, el};
+      if(b && !b.dataset.amEstado) _guardarFuera(b, ev);
+      else if(b && b.dataset.amEstado){ ev.stopImmediatePropagation(); ev.preventDefault(); }
+    }, true);
+    AnimMarcado.activarToques('.btn-primary, .btn-outline, .kpi-action, .kpi[onclick], .phase-tab, .tabbar-item, .clock-btn, .brand-plate, .fab, .back, .content button, .modal-sheet button, .check-row[onclick], .card[onclick], [data-id][onclick], .am-gbarra');
     const app = document.getElementById('app'); if(!app) return;
     app.classList.add('am-fondo-encogible');
-    new MutationObserver(()=>{ if(!pendiente){ pendiente = true; requestAnimationFrame(alPintar); } }).observe(app, {childList:true});
+    new MutationObserver(()=>{ renders++; if(!pendiente){ pendiente = true; requestAnimationFrame(alPintar); } }).observe(app, {childList:true});
   }
-  return {iniciar};
+  const api = {iniciar, huellas, compararYAnimar, documento, selloDe, _errores:0};
+  return api;
 })();
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -5185,7 +5349,7 @@ App.Views.dashboard = async function(){
     const stampClass = mostrarRiesgo ? 'riesgo' : (inst.estado==='curso'?'curso':(inst.estado==='final'?'final':'pendiente'));
     const stampTxt = mostrarRiesgo ? 'En riesgo' : (inst.estado==='curso'?'En curso':(inst.estado==='final'?'Finalizada':'Pendiente'));
     const buscador = (inst.nombre+' '+(inst.cliente||'')+' '+(inst.ubicacion||'')).toLowerCase();
-    return '<div class="proyecto-wrap" data-search="'+esc(buscador)+'" data-problema="'+(abiertos?'1':'0')+'">'+
+    return '<div class="proyecto-wrap" data-id="obra-'+inst.id+'" data-search="'+esc(buscador)+'" data-problema="'+(abiertos?'1':'0')+'">'+
     '<div class="card" onclick="App.Router.abrirInstalacion(\''+inst.id+'\')">'+
       '<div class="proyecto-top">'+
         '<div><div class="proyecto-nombre">'+esc(inst.nombre)+'</div>'+
@@ -5404,7 +5568,7 @@ App.Views.marcarHorasRapido = async function(instId){
     const en = abierto(id, esExtra);
     const min = minutosHoy(id, esExtra);
     const regAb = (inst.registroHoras||[]).find(r=> r.trabajadorId===id && r.esExtra===!!esExtra && r.fecha===hoyStr && r.entrada && !r.salida);
-    return '<button onclick="App.Handlers.checarRapido(\''+instId+'\',\''+id+'\','+(!!esExtra)+')" style="width:100%; display:flex; align-items:center; gap:10px; padding:13px 10px; margin-bottom:8px; border-radius:10px; border:1.5px solid '+(en?'var(--exito)':'var(--borde)')+'; background:'+(en?'var(--exito-fondo)':'var(--superficie)')+'; text-align:left;">'+
+    return '<button data-id="asisr-'+id+'" onclick="App.Handlers.checarRapido(\''+instId+'\',\''+id+'\','+(!!esExtra)+')" style="width:100%; display:flex; align-items:center; gap:10px; padding:13px 10px; margin-bottom:8px; border-radius:10px; border:1.5px solid '+(en?'var(--exito)':'var(--borde)')+'; background:'+(en?'var(--exito-fondo)':'var(--superficie)')+'; text-align:left;">'+
       '<div class="avatar" style="width:34px;height:34px;font-size:13px; flex-shrink:0;">'+iniciales(nombre)+'</div>'+
       '<div style="flex:1; min-width:0;">'+
         '<div style="font-weight:700; font-size:14px;">'+esc(nombre)+'</div>'+
@@ -5421,13 +5585,13 @@ App.Views.marcarHorasRapido = async function(instId){
   });
   (inst.personalExtra||[]).forEach(p=> filas += fila(p.id, true, p.nombre));
 
-  openModal('Marcar asistencia — '+esc(inst.nombre),
+  App.UIHelpers.openModal('Marcar asistencia — '+esc(inst.nombre),
     '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;">Toca a cada persona para marcar su entrada o salida.</div>'+
     '<div id="marcarRapidoLista">'+filas+'</div>'+
     '<div style="display:flex; gap:8px; margin-top:6px;">'+
       '<button class="btn-outline" style="margin:0; border-color:var(--exito); color:var(--exito);" onclick="App.Handlers.checarTodos(\''+instId+'\',\'entrada\',true)">▶ Entrada a todos</button>'+
       '<button class="btn-outline" style="margin:0; border-color:var(--peligro); color:var(--peligro);" onclick="App.Handlers.checarTodos(\''+instId+'\',\'salida\',true)">■ Salida a todos</button>'+
-    '</div>');
+    '</div>', null, {enLugar:true});
 };
 
 App.Views.accesoRapido = async function(tipo){
@@ -5527,9 +5691,9 @@ App.Views.miDia = async function(){
   const obras = R.map(({i, r})=>{
     const plan = r.acts.map(a=>{
       const av = avanceActividad(a), atr = a.fechaFin<hoyStr, col = atr?'var(--peligro)':'var(--g-encurso)';
-      return '<div onclick="App.Handlers.registrarAvanceActividad(\''+i.id+'\',\''+a.id+'\')" style="cursor:pointer; padding:7px 0; border-bottom:1px solid var(--borde);">'+
+      return '<div data-id="mdact-'+a.id+'" onclick="App.Handlers.registrarAvanceActividad(\''+i.id+'\',\''+a.id+'\')" style="cursor:pointer; padding:7px 0; border-bottom:1px solid var(--borde);">'+
         '<div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px;"><span style="font-weight:600;">'+esc(a.nombre)+'</span><span style="'+mono+' font-size:10px; font-weight:700; color:'+col+'; white-space:nowrap;">'+(atr?'ATRASADA':'HASTA '+fmtFecha(a.fechaFin).slice(0,5))+'</span></div>'+
-        '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;"><div style="flex:1; height:6px; background:var(--fondo-alt); border-radius:4px; overflow:hidden;"><div style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:11px;">'+av+'%</b><span style="font-size:10.5px; color:var(--acento);">＋ avance</span></div>'+
+        '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;"><div style="flex:1; height:6px; background:var(--fondo-alt); border-radius:4px; overflow:hidden;"><div class="am-barra" style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:11px;">'+av+'%</b><span style="font-size:10.5px; color:var(--acento);">＋ avance</span></div>'+
       '</div>';
     }).join('') || '<div style="font-size:12px; color:var(--texto-suave); padding:4px 0;">Sin actividades programadas para hoy</div>';
     const hechos = r.hechos.length ? r.hechos.map(h=>'<div style="font-size:12px; padding:2px 0;">✅ <b>'+esc(h.act)+'</b>: '+esc(h.txt)+(h.nota?' — '+esc(h.nota):'')+'</div>').join('') : '<div style="font-size:12px; color:var(--texto-suave);">Aún sin avance registrado hoy</div>';
@@ -5769,12 +5933,12 @@ App.Elementos = (function(){
               : '<div style="display:flex; height:6px; border-radius:4px; overflow:hidden; background:#2A2322; margin-top:6px;">'+seg(cc.ok,ESTADOS.ok.color)+seg(cc.falta,ESTADOS.falta.color)+seg(cc.no,ESTADOS.no.color)+'</div>'+
                 '<div style="font-size:10.5px; color:var(--texto-suave); margin-top:4px;">'+(cc.falta? '🟡 '+cc.falta+' ':'')+(cc.no? '🔴 '+cc.no+' ':'')+(cc.pendiente? '○ '+cc.pendiente+' sin revisar':'')+(asig.length? ' · 👥 '+esc(asig.join(', ')):'')+'</div>')+
         '</div>'+
-        (abierto? '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(74px,1fr)); gap:6px; margin-top:10px;">'+
+        (abierto? '<div class="'+(st._recien===p? 'am-chips-entra':'')+'" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(74px,1fr)); gap:6px; margin-top:10px;">'+
           vis.map(x=>{
             if(ent){ const okE = entregaDe(x)==='entregado';
-              return '<button onclick="App.Elementos.marcarEntrega(\''+i.id+'\',\''+x.id+'\')" style="padding:9px 4px; border-radius:8px; border:1px solid '+(okE?ESTADOS.ok.color:'#FF5470')+'; background:'+(okE?ESTADOS.ok.color:'#0B0909')+'; color:'+(okE?ESTADOS.ok.txt:'#FF8A9C')+'; font-family:\'JetBrains Mono\',monospace; font-size:11px; font-weight:700; line-height:1.2; word-break:break-all;">'+esc(x.codigo)+'<div style="font-size:9px; font-weight:700;">'+(okE?'✓ entregado':'✗ no entregado')+'</div></button>'; }
+              return '<button data-id="ent-'+x.id+'" onclick="App.Elementos.marcarEntrega(\''+i.id+'\',\''+x.id+'\')" style="padding:9px 4px; border-radius:8px; border:1px solid '+(okE?ESTADOS.ok.color:'#FF5470')+'; background:'+(okE?ESTADOS.ok.color:'#0B0909')+'; color:'+(okE?ESTADOS.ok.txt:'#FF8A9C')+'; font-family:\'JetBrains Mono\',monospace; font-size:11px; font-weight:700; line-height:1.2; word-break:break-all;">'+esc(x.codigo)+'<div style="font-size:9px; font-weight:700;">'+(okE?'✓ entregado':'✗ no entregado')+'</div></button>'; }
             const e = ESTADOS[x.estado||'pendiente'], pend = (x.estado||'pendiente')==='pendiente';
-            return '<button onclick="App.Elementos.marcar(\''+i.id+'\',\''+x.id+'\')" style="padding:9px 4px; border-radius:8px; border:'+(x.corregido?'2px solid '+ESTADOS.ok.color:'1px solid '+(pend?'#3B3332':e.color))+'; background:'+(pend?'#0B0909':e.color)+'; color:'+(pend?'#F2F1EC':e.txt)+'; font-family:\'JetBrains Mono\',monospace; font-size:11px; font-weight:700; line-height:1.2; word-break:break-all;">'+esc(x.codigo)+(x.corregido?'<div style="font-size:9px; font-weight:800;">✅ corregido</div>':(x.obs?'<div style="font-size:9px; font-weight:600;">✎ obs.</div>':''))+'</button>'; }).join('')+
+            return '<button data-id="el-'+x.id+'" onclick="App.Elementos.marcar(\''+i.id+'\',\''+x.id+'\')" style="padding:9px 4px; border-radius:8px; border:'+(x.corregido?'2px solid '+ESTADOS.ok.color:'1px solid '+(pend?'#3B3332':e.color))+'; background:'+(pend?'#0B0909':e.color)+'; color:'+(pend?'#F2F1EC':e.txt)+'; font-family:\'JetBrains Mono\',monospace; font-size:11px; font-weight:700; line-height:1.2; word-break:break-all;">'+esc(x.codigo)+(x.corregido?'<div style="font-size:9px; font-weight:800;">✅ corregido</div>':(x.obs?'<div style="font-size:9px; font-weight:600;">✎ obs.</div>':''))+'</button>'; }).join('')+
           '</div>'+
           '<div style="display:flex; gap:8px; margin-top:10px;">'+
             (ent? '<button class="btn-outline" style="margin:0; border-color:'+ESTADOS.ok.color+'; color:'+ESTADOS.ok.color+';" onclick="App.Elementos.pisoEntregado(\''+i.id+'\',\''+jsArg(p)+'\')">✓ Piso completo entregado</button>'
@@ -5808,11 +5972,13 @@ App.Elementos = (function(){
       '</div>';
     const y = window.scrollY;
     document.getElementById('app').innerHTML = html;
+    document.querySelectorAll('#app .am-chips-entra > button').forEach((b,k)=> b.style.setProperty('--am-k', Math.min(k,40)));
+    st._recien = null;
     window.scrollTo(0, st._mantener? y : 0); st._mantener = false;
   }
   function _tipo(t){ App.State.fisc.tipo = t; App.State.fisc.abierto = null; vista(App.State.fisc.instId); }
   function _filtro(f){ App.State.fisc.filtro = f; App.State.fisc._mantener = true; vista(App.State.fisc.instId); }
-  function _abrir(p){ const st = App.State.fisc; st.abierto = st.abierto===p? null : p; st._mantener = true; vista(st.instId); }
+  function _abrir(p){ const st = App.State.fisc; st.abierto = st.abierto===p? null : p; st._recien = st.abierto; st._mantener = true; vista(st.instId); }
 
   async function marcar(instId, id){
     const i = await App.Repo.obtener(instId); const x = lista(i).find(e=>e.id===id); if(!x) return;
