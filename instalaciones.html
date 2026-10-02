@@ -1303,6 +1303,7 @@ App.Repo = (function(){
     ['herramientasPropias','herramientasSolicitar','herramientasComprar','materiales','transporte','personalFijoIds','personalExtra','registroHoras','cronograma','avanceRegistros','evaluacionesDiarias','documentos','checklistGeneral','bitacoraDiaria','problemas'].forEach(k=>{ if(!Array.isArray(inst[k])) inst[k]=[]; });
     if(!inst.produccion) inst.produccion = {unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas:[]};
     if(!inst.acta) inst.acta = {};
+    if(!Array.isArray(inst.hitos)) inst.hitos = [];
     if(!Array.isArray(inst.solicitudes)){
       inst.solicitudes = [];
       inst.materiales.forEach(m=> inst.solicitudes.push({id:m.id||uid('sol'), descripcion:m.nombre, cantidad:m.cantidad||1, tipo:'material', destino:'Fábrica', fechaSolicitud:'', estado: m.estado==='entregado'?'solucionado':'pendiente', fechaSolucion:'', nota:''}));
@@ -2439,9 +2440,11 @@ App.Views._transporteLista = function(inst, lista){
 App.Views.faseAntes = async function(inst){
   const {esc} = App.UIHelpers;
   const trabajadoresCat = await App.Repo.catalogoTrabajadores();
+  const _jorPG = await App.Repo.parametrosJornada();
+  const _tiemposPG = await App.Repo.catalogoActividades();
   const gruposCat = await App.Repo.catalogoGrupos();
   const asignadosSet = new Set(inst.personalFijoIds||[]);
-  const gruposProyecto = gruposCat.filter(g=> (g.miembros||[]).some(id=>asignadosSet.has(id)));
+  const gruposProyecto = gruposCat.filter(g=> (g.miembros||[]).some(id=>asignadosSet.has(id))).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es',{numeric:true}));
   const gruposHtml = gruposProyecto.map(g=>{
     const nombres = (g.miembros||[]).map(id=>{ const t=trabajadoresCat.find(x=>x.id===id); return t? t.nombre+(t.tipo==='extra'?' (extra)':'') : null; }).filter(Boolean);
     return '<div class="worker-row" style="align-items:flex-start;">'+
@@ -2599,19 +2602,25 @@ App.Views.faseAntes = async function(inst){
     '</div>').join('') || '<div class="empty" style="padding:14px 0;">Sin pendientes registrados</div>';
   const checklistHechos = (inst.checklistGeneral||[]).filter(c=>c.hecho).length;
 
+  const nFijos = (inst.personalFijoIds||[]).length, nExtra = (inst.personalExtra||[]).length;
   return (
-    '<div class="section-label">Equipo del proyecto</div>'+
-    '<div class="card"><h3>Personal · Fijo (empresa)</h3>'+fijosHtml+
-      '<button class="btn-outline" onclick="App.Handlers.agregarPersonalFijo(\''+inst.id+'\')">+ Asignar personal fijo</button></div>'+
+    '<div class="section-label">① Qué, cuánto y para cuándo</div>'+
+    App.PlanGeneral.tarjeta(inst, _jorPG, _tiemposPG, trabajadoresCat)+
 
-    '<div class="card"><h3>Personal · Extra / eventual</h3>'+extraHtml+
-      '<button class="btn-outline" onclick="App.Handlers.agregarPersonalExtra(\''+inst.id+'\')">+ Agregar personal extra</button></div>'+
+    '<div class="section-label">② Equipo</div>'+
+    '<div class="card"><h3>👷 Equipo del proyecto <span class="count">'+(nFijos+nExtra)+' persona(s) · '+gruposProyecto.length+' grupo(s)</span></h3>'+
+      '<div style="font-size:11.5px; font-weight:700; color:var(--texto-suave); margin:2px 0 4px;">FIJOS (EMPRESA)</div>'+fijosHtml+
+      '<button class="btn-outline" style="margin-top:4px;" onclick="App.Handlers.agregarPersonalFijo(\''+inst.id+'\')">+ Asignar personal fijo</button>'+
+      '<div style="font-size:11.5px; font-weight:700; color:var(--texto-suave); margin:14px 0 4px;">EXTRA / EVENTUAL</div>'+extraHtml+
+      '<button class="btn-outline" style="margin-top:4px;" onclick="App.Handlers.agregarPersonalExtra(\''+inst.id+'\')">+ Agregar personal extra</button>'+
+      '<div style="font-size:11.5px; font-weight:700; color:var(--texto-suave); margin:14px 0 4px;">GRUPOS DE TRABAJO</div>'+gruposHtml+
+      '<button class="btn-outline" style="margin-top:4px;" onclick="App.Handlers.crearGrupoProyecto(\''+inst.id+'\')">+ Crear grupo con el personal del proyecto</button>'+
+    '</div>'+
 
-    '<div class="card"><h3>Grupos de trabajo <span class="count">'+gruposProyecto.length+'</span></h3>'+gruposHtml+
-      '<button class="btn-outline" onclick="App.Handlers.crearGrupoProyecto(\''+inst.id+'\')">+ Crear grupo con el personal del proyecto</button></div>'+
-
-    '<div class="section-label">Preparación</div>'+
+    '<div class="section-label">③ Puertas / elementos con código (opcional)</div>'+
     App.Elementos.tarjeta(inst, 'antes')+
+
+    '<div class="section-label">④ Preparación y logística</div>'+
     '<div class="card"><h3>Checklist general <span class="count">'+checklistHechos+'/'+(inst.checklistGeneral||[]).length+'</span></h3>'+checklistHtml+
       '<div style="display:flex; gap:8px;">'+
       '<button class="btn-outline" style="margin-top:8px;" onclick="App.Handlers.agregarChecklistItem(\''+inst.id+'\')">+ Agregar pendiente</button>'+
@@ -2623,7 +2632,9 @@ App.Views.faseAntes = async function(inst){
       documentosHtml+
       '<label style="margin-top:8px;">Subir documento</label>'+
       '<select id="docTipo" style="margin-bottom:8px;"><option value="cotizacion">Cotización</option><option value="presupuesto">Presupuesto</option><option value="contrato">Contrato</option><option value="otro">Otro</option></select>'+
-      '<input type="file" id="docFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">'+
+      '<label for="docFile" class="btn-outline" style="display:flex; align-items:center; justify-content:center; gap:8px; margin:0 0 8px; cursor:pointer;">📎 Elegir documento</label>'+
+      '<input type="file" id="docFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" style="display:none;" onchange="(function(i){ var s=document.getElementById(\'docNombre\'); if(s) s.textContent = i.files && i.files[0] ? \'📄 \'+i.files[0].name : \'\'; })(this)">'+
+      '<div id="docNombre" style="font-size:12px; color:var(--texto-suave); margin:-2px 0 6px;"></div>'+
       '<button class="btn-outline" onclick="App.Handlers.subirDocumento(\''+inst.id+'\')">Subir</button></div>'+
 
     '<div class="card"><h3>Herramientas · Propias <span class="count">'+propiasLlevo+'/'+(inst.herramientasPropias||[]).length+'</span></h3>'+propiasHtml+
@@ -2640,13 +2651,6 @@ App.Views.faseAntes = async function(inst){
 
     '<div class="card"><h3>Transporte <span class="count">'+(inst.transporte||[]).length+' envío(s)</span></h3>'+transporteHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarTransporte(\''+inst.id+'\')">+ Agregar envío</button></div>'+
-
-    '<div class="section-label">Planificación</div>'+
-    '<div class="card"><h3>Cronograma <span class="count">'+(inst.fechaFinPlan? 'entrega: '+fmtFecha(inst.fechaFinPlan) : 'sin fecha de entrega')+'</span></h3>'+cronoChart+cronoHtml+
-      '<div style="display:grid; grid-template-columns:auto 1fr; gap:8px; margin-top:10px; align-items:stretch;">'+
-      '<button class="btn-outline" style="margin:0; width:auto; padding:12px 14px; white-space:nowrap;" onclick="App.Handlers.configurarFechasProyecto(\''+inst.id+'\')">📅 Fechas</button>'+
-      '<button class="btn-primary" style="margin:0; white-space:nowrap;" onclick="App.Handlers.agregarActividad(\''+inst.id+'\')">+ Agregar actividad</button>'+
-      '</div></div>'+
 
     (inst.estado==='pendiente'? '<button class="btn-primary" onclick="App.Handlers.pasarACurso(\''+inst.id+'\')">Marcar como "En curso"</button>' : '')
   );
@@ -2701,11 +2705,11 @@ App.Views.faseDurante = async function(inst){
       '<span style="'+mono+' font-size:10px; font-weight:700; color:'+col+'; white-space:nowrap;">'+(atras? 'ATRASADA '+(-restan)+'d' : (restan===0?'TERMINA HOY':'QUEDAN '+restan+'d'))+'</span></div>'+
       '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">'+(a.asignado? (a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre)+' · ':'')+(a.fechaInicio===a.fechaFin? fmtFecha(a.fechaFin) : fmtFecha(a.fechaInicio)+' → '+fmtFecha(a.fechaFin))+(total!=null && hechas!=null? ' · <b style="color:var(--texto);">'+hechas+' de '+total+'</b>':'')+'</div>'+
       '<div style="display:flex; align-items:center; gap:8px; margin-top:7px;"><div style="flex:1; height:8px; background:var(--fondo-alt); border-radius:5px; overflow:hidden;"><div class="am-barra" style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:12px;">'+av+'%</b></div>'+
-      (porPiso? '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Router.abrirFiscalizacion(\''+inst.id+'\',\''+jsArg(a.piso)+'\')">🔍 Calificar las puertas de este trabajo</button>'
-               : '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Handlers.registrarAvanceActividad(\''+inst.id+'\',\''+a.id+'\')">📈 Registrar avance de hoy</button>')+
+      (porPiso? '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Router.abrirFiscalizacion(\''+inst.id+'\',\''+jsArg(a.piso)+'\')">② 🔍 Calificar las puertas de este trabajo</button>'
+               : '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Handlers.registrarAvanceActividad(\''+inst.id+'\',\''+a.id+'\')">② ✅ Reportar lo que se hizo</button>')+
       (asg && atras && falta? '<button class="btn-outline" style="margin-top:6px; padding:9px; border-color:var(--acento); color:var(--acento);" onclick="App.Plan.reprogramar(\''+inst.id+'\',\''+a.id+'\')">↪ Reprogramar lo que faltó ('+falta+')</button>' : '')+
     '</div>';
-  }).join('') || '<div class="empty" style="padding:12px 0;">No hay trabajo asignado para hoy.<br>Toca <b>+ Asignar trabajo</b> para repartirlo a un grupo.</div>';
+  }).join('') || '<div class="empty" style="padding:6px 0 10px;">No hay trabajo asignado para hoy.</div>';
 
   const hechosHoy = [];
   acts.forEach(a=> (a.avances||[]).forEach(av=>{ if(av.fecha===hoyStr) hechosHoy.push('✅ <b>'+esc(a.nombre)+'</b>: '+(av.cantidad!=null && a.unidades? '+'+av.cantidad+' '+esc(a.unidades.unidad||'') : 'llegó a '+av.pct+'%')+(av.nota? ' — '+esc(av.nota):'')); }));
@@ -2817,52 +2821,57 @@ App.Views.faseDurante = async function(inst){
   const horasEquipoHoy = equipo.reduce((s,m)=>s+minHoy(m),0);
   const perdHoy = (inst.bitacoraDiaria||[]).filter(b=>b.fecha===hoyStr).reduce((s,b)=>s+num(b.horasPerdidas),0) + (inst.problemas||[]).filter(p=>p.fecha===hoyStr).reduce((s,p)=>s+num(p.horasPerdidas),0);
 
+  // ---------- Pendientes y logística (solicitudes, compras, transporte) ----------
+  const solPend = (inst.solicitudes||[]).filter(s=>s.estado!=='solucionado').sort((a,b)=>String(a.fechaSolicitud||'').localeCompare(String(b.fechaSolicitud||'')));
+  const comPend = (inst.herramientasComprar||[]).filter(h=>h.estado!=='comprado');
+  const traAct = (inst.transporte||[]).filter(t=>t.estado!=='entregado'), traEnt = (inst.transporte||[]).filter(t=>t.estado==='entregado');
+  const diasDesde = f=> f? Math.round((new Date(hoyStr+'T00:00:00')-new Date(f+'T00:00:00'))/86400000) : null;
+  const btnOk = (fn, id)=> '<button class="btn-outline" style="margin:0; width:auto; padding:7px 12px; font-size:12px; border-color:var(--exito); color:var(--exito); white-space:nowrap;" onclick="App.Handlers.'+fn+'(\''+inst.id+'\',\''+id+'\')">✅</button>';
+  const logisticaHtml = '<div class="card"><h3>📦 Pendientes y logística <span class="count">'+(solPend.length+comPend.length+traAct.length)+'</span></h3>'+
+    (solPend.length? '<div class="section-label" style="margin-top:2px;">Solicitudes a fábrica</div>'+solPend.map(s=>{ const d = diasDesde(s.fechaSolicitud);
+      return '<div class="check-row" data-id="lsol-'+s.id+'"><div class="check-label">📌 <b>'+esc(s.descripcion)+'</b> ×'+(s.cantidad||1)+'<div style="font-size:11px; color:var(--texto-suave);">'+esc(s.destino||'')+(d!=null? ' · hace '+d+' día(s)':'')+'</div></div>'+btnOk('solucionarSolicitud', s.id)+'</div>'; }).join('') : '')+
+    (comPend.length? '<div class="section-label">Compras en sitio</div>'+comPend.map(h=>
+      '<div class="check-row" data-id="lcom-'+h.id+'"><div class="check-label">🛒 <b>'+esc(h.nombre)+'</b><div style="font-size:11px; color:var(--texto-suave);">$'+num(h.costo).toFixed(2)+(h.asignadoA && h.asignadoA.nombre? ' · '+esc(h.asignadoA.nombre):'')+'</div></div>'+btnOk('marcarComprado', h.id)+'</div>').join('') : '')+
+    (traAct.length? '<div class="section-label">Transporte</div>'+App.Views._transporteLista(inst, traAct) : '')+
+    (traEnt.length? '<details style="margin-top:4px;"><summary style="cursor:pointer; font-size:12px; color:var(--texto-suave); padding:6px 0;">✅ '+traEnt.length+' transporte(s) entregado(s)</summary>'+App.Views._transporteLista(inst, traEnt)+'</details>' : '')+
+    (!solPend.length && !comPend.length && !traAct.length? '<div class="empty" style="padding:10px 0;">Todo al día ✓ · sin solicitudes, compras ni transportes pendientes</div>' : '')+
+    '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px;">'+
+      '<button class="btn-outline" style="margin:0; white-space:nowrap; padding:11px 2px; font-size:12px;" onclick="App.Handlers.agregarSolicitud(\''+inst.id+'\')">📌 Solicitud</button>'+
+      '<button class="btn-outline" style="margin:0; white-space:nowrap; padding:11px 2px; font-size:12px;" onclick="App.Handlers.agregarHerramientaComprar(\''+inst.id+'\')">🛒 Compra</button>'+
+      '<button class="btn-outline" style="margin:0; white-space:nowrap; padding:11px 2px; font-size:12px;" onclick="App.Handlers.agregarTransporte(\''+inst.id+'\')">🚚 Transporte</button>'+
+    '</div></div>';
+
+  const ganttConEscala = gantt? '<div style="display:flex; gap:6px; margin:4px 0 8px; align-items:center;"><span style="font-size:11px; color:var(--texto-suave);">Ver por:</span>'+bEsc('dia','Día')+bEsc('semana','Semana')+bEsc('mes','Mes')+'</div>'+gantt : '';
+
   return (
     '<div class="card" style="border-left:3px solid var(--acento);">'+
       '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">'+
-        '<h3 style="margin:0;">👷 Asistencia del equipo</h3><span id="relojDigital" style="'+mono+' font-size:18px; font-weight:700; color:var(--acento);">'+horaAhora()+'</span></div>'+
-      '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;"><b style="color:var(--exito);">'+enSitio+' en sitio</b>'+(sinMarcar? ' · <b style="color:var(--acento-fuerte);">'+sinMarcar+' sin marcar</b>':'')+' · toca a una persona para marcar</div>'+
+        '<h3 style="margin:0;">👷 Asistencia</h3><span id="relojDigital" style="'+mono+' font-size:18px; font-weight:700; color:var(--acento);">'+horaAhora()+'</span></div>'+
+      '<div style="font-size:12px; color:var(--texto-suave); margin-bottom:8px;"><b style="color:var(--exito);">'+enSitio+' en sitio</b>'+(sinMarcar? ' · <b style="color:var(--acento-fuerte);">'+sinMarcar+' sin marcar</b>':'')+' · '+App.Repo.fmtMinutos(horasEquipoHoy)+' del equipo hoy · toca a una persona para marcar</div>'+
       filasEquipo+
       '<div style="display:flex; gap:8px; margin-top:4px;">'+
         '<button class="btn-outline" style="margin:0; border-color:var(--exito); color:var(--exito);" onclick="App.Handlers.checarTodos(\''+inst.id+'\',\'entrada\')">▶ Entrada a todos</button>'+
         '<button class="btn-outline" style="margin:0; border-color:var(--peligro); color:var(--peligro);" onclick="App.Handlers.checarTodos(\''+inst.id+'\',\'salida\')">■ Salida a todos</button>'+
       '</div>'+
+      '<details style="margin-top:8px;"><summary style="cursor:pointer; font-size:12px; color:var(--texto-suave); padding:4px 0;">⏱ Ver turnos de hoy</summary><div style="margin-top:8px;">'+turnos+'</div></details>'+
     '</div>'+
 
-    '<div class="card"><h3>Resumen de hoy · '+fmtFecha(hoyStr)+'</h3><div class="kpi-row">'+
-      '<div class="kpi"><div class="num" style="font-size:18px;">'+App.Repo.fmtMinutos(horasEquipoHoy)+'</div><div class="lbl">Horas del equipo</div></div>'+
-      '<div class="kpi'+(abiertosCount?' alert':'')+'"><div class="num">'+abiertosCount+'</div><div class="lbl">Problemas abiertos</div></div>'+
-      '<div class="kpi'+(perdHoy?' alert':'')+'"><div class="num">'+(Math.round(perdHoy*10)/10)+'h</div><div class="lbl">Horas perdidas hoy</div></div>'+
-    '</div></div>'+
-
-    App.Plan.tarjetaMeta(inst, metaP)+
-    '<div class="card"><h3>📋 Plan de hoy <span class="count">'+deHoy.length+' trabajo(s)</span></h3>'+planHtml+
-      '<button class="btn-outline" style="margin-top:4px;" onclick="App.Plan.asignar(\''+inst.id+'\')">+ Asignar trabajo</button>'+
+    '<div class="card"><h3>📋 Plan de hoy <span class="count">'+deHoy.length+' trabajo(s)</span></h3>'+
+      '<div style="display:flex; gap:6px; font-size:11px; color:var(--texto-suave); margin:-2px 0 8px;"><span><b style="color:var(--texto);">①</b> Asigna (mañana)</span><span>→</span><span><b style="color:var(--texto);">②</b> Reporta lo que se hizo (tarde)</span></div>'+
+      '<button class="btn-primary" style="margin:0 0 10px;" onclick="App.Plan.asignar(\''+inst.id+'\')">① + Asignar trabajo</button>'+
+      planHtml+
       '<div class="section-label">Lo que se hizo hoy</div>'+hechosHtml+'</div>'+
 
     App.Plan.proximosHtml(inst)+
+    App.Plan.tarjetaMeta(inst, metaP, ganttConEscala)+
     ((inst.elementos && (inst.elementos.items||[]).length)? App.Elementos.tarjeta(inst, 'durante') : '')+
-    (function(){
-      const todos = inst.transporte||[];
-      const activos = todos.filter(t=>t.estado!=='entregado'), entregados = todos.filter(t=>t.estado==='entregado');
-      return '<div class="card"><h3>🚚 Transporte <span class="count">'+activos.length+' activo(s)</span></h3>'+
-        (activos.length? App.Views._transporteLista(inst, activos) : '<div class="empty" style="padding:10px 0;">Sin envíos en curso</div>')+
-        (entregados.length? '<details style="margin-top:4px;"><summary style="cursor:pointer; font-size:12px; color:var(--texto-suave); padding:6px 0;">✅ '+entregados.length+' entregado(s)</summary>'+App.Views._transporteLista(inst, entregados)+'</details>' : '')+
-        '<button class="btn-outline" onclick="App.Handlers.agregarTransporte(\''+inst.id+'\')">+ Solicitar transporte</button></div>';
-    })()+
-    (gantt? '<div class="card"><h3>📊 Cronograma (Gantt) <span class="count">avance '+App.Repo.calcularAvance(inst)+'%</span></h3>'+
-      '<div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;"><span style="font-size:11px; color:var(--texto-suave);">Ver por:</span>'+bEsc('dia','Día')+bEsc('semana','Semana')+bEsc('mes','Mes')+'</div>'+gantt+
-      '<button class="btn-outline" onclick="App.Router.cambiarFase(\'antes\')">Editar plan (Antes → Cronograma)</button></div>' : '')+
+    logisticaHtml+
 
-    produccionCard+
-
-    '<div class="card"><h3>📝 Bitácora <span class="count">'+bitHoy+' hoy</span></h3>'+bitacoraHtml+
+    '<div class="card"><h3>📝 Bitácora <span class="count">'+bitHoy+' hoy'+(perdHoy? ' · '+(Math.round(perdHoy*10)/10)+' h perdidas':'')+'</span></h3>'+bitacoraHtml+
       '<button class="btn-primary" onclick="App.Handlers.agregarBitacora(\''+inst.id+'\')">+ Anotar en bitácora</button></div>'+
 
     '<div class="card"><h3>⚠️ Problemas <span class="count">'+abiertosCount+' abierto(s)</span></h3>'+problemasHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarProblema(\''+inst.id+'\')">+ Registrar problema</button></div>'+
-
-    '<div class="card"><h3>⏱ Turnos de hoy</h3>'+turnos+'</div>'+
 
     '<div class="card"><h3>⭐ Evaluación diaria</h3>'+evaluacionesHtml+
       '<button class="btn-outline" onclick="App.Handlers.agregarEvaluacion(\''+inst.id+'\')">+ Calificar el día</button></div>'+
@@ -4009,7 +4018,7 @@ App.Handlers = (function(){
     const conUnid = a.unidades && a.unidades.cantidad>0;
     const hechas = conUnid ? (a.avances||[]).reduce((s,x)=>s+(x.cantidad||0),0) : 0;
     App.State.avanceAct = {instId, actId, conUnid, hechas, total: conUnid? a.unidades.cantidad:100};
-    openModal('Avance · '+esc(a.nombre),
+    openModal('② Reportar avance · '+esc(a.nombre),
       '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">'+
         '<div style="flex:1; height:10px; background:var(--fondo-alt); border-radius:6px; overflow:hidden;"><div style="height:100%; width:'+av+'%; background:var(--acento);"></div></div><b>'+av+'%</b></div>'+
       '<label>Fecha</label><input type="date" id="avaFecha" value="'+hoy()+'">'+
@@ -5762,7 +5771,7 @@ App.Views.miDia = async function(){
       const av = avanceActividad(a), atr = a.fechaFin<hoyStr, col = atr?'var(--peligro)':'var(--g-encurso)';
       return '<div data-id="mdact-'+a.id+'" onclick="App.Handlers.registrarAvanceActividad(\''+i.id+'\',\''+a.id+'\')" style="cursor:pointer; padding:7px 0; border-bottom:1px solid var(--borde);">'+
         '<div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px;"><span style="font-weight:600;">'+esc(a.nombre)+'</span><span style="'+mono+' font-size:10px; font-weight:700; color:'+col+'; white-space:nowrap;">'+(atr?'ATRASADA':'HASTA '+fmtFecha(a.fechaFin).slice(0,5))+'</span></div>'+
-        '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;"><div style="flex:1; height:6px; background:var(--fondo-alt); border-radius:4px; overflow:hidden;"><div class="am-barra" style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:11px;">'+av+'%</b><span style="font-size:10.5px; color:var(--acento);">＋ avance</span></div>'+
+        '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;"><div style="flex:1; height:6px; background:var(--fondo-alt); border-radius:4px; overflow:hidden;"><div class="am-barra" style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:11px;">'+av+'%</b><span style="font-size:10.5px; color:var(--acento);">② reportar</span></div>'+
       '</div>';
     }).join('') || '<div style="font-size:12px; color:var(--texto-suave); padding:4px 0;">Sin actividades programadas para hoy</div>';
     const hechos = r.hechos.length ? r.hechos.map(h=>'<div style="font-size:12px; padding:2px 0;">✅ <b>'+esc(h.act)+'</b>: '+esc(h.txt)+(h.nota?' — '+esc(h.nota):'')+'</div>').join('') : '<div style="font-size:12px; color:var(--texto-suave);">Aún sin avance registrado hoy</div>';
@@ -5966,9 +5975,9 @@ App.Elementos = (function(){
         '<button class="btn-outline" style="margin:0;" onclick="App.Elementos.generar(\''+i.id+'\')">⚙️ Generar códigos</button>'+
         '<button class="btn-outline" style="margin:0;" onclick="App.Elementos.importar(\''+i.id+'\')">📥 Subir Excel / CSV</button>'+
         '<button class="btn-outline" style="margin:0;" onclick="App.Elementos.pegar(\''+i.id+'\')">📋 Pegar desde Excel</button>'+
-        '<button class="btn-outline" style="margin:0;" onclick="App.Elementos.asignar(\''+i.id+'\')"'+(ts.length?'':' disabled')+'>👥 Asignar a grupos</button>'+
+        '<button class="btn-outline" style="margin:0;" onclick="App.Elementos.asignar(\''+i.id+'\')"'+(ts.length?'':' disabled')+'>👥 Responsables por piso</button>'+
       '</div>';
-    return '<div class="card"><h3>🚪 Registro de elementos <span class="count">'+lista(i).length+'</span></h3>'+cuerpo+
+    return '<div class="card"><h3>'+(modo==='antes'? '🚪 Registro de puertas / elementos' : '🔍 Calidad de la instalación')+' <span class="count">'+lista(i).length+'</span></h3>'+cuerpo+
       (modo==='antes'? botonesAntes : '')+
       (ts.length? '<button class="btn-primary" style="margin-top:10px;" onclick="App.Router.abrirFiscalizacion(\''+i.id+'\')">🔍 Calificar instalación</button>' : '')+
     '</div>';
@@ -6308,8 +6317,8 @@ App.Elementos = (function(){
     (i.personalFijoIds||[]).forEach(id=>{ const t=trabCat.find(x=>x.id===id); if(t && t.activo!==false) opc += '<option value="trabajador|'+t.id+'|'+esc(t.nombre)+'">👤 '+esc(t.nombre)+'</option>'; });
     const ts = tipos(i);
     const pisos = Array.from(new Set(lista(i).map(x=>String(x.piso)))).sort((a,b)=>pisoNum(a)-pisoNum(b));
-    App.UIHelpers.openModal('👥 Asignar a grupos',
-      '<div style="font-size:12px; color:var(--texto-suave); margin:-6px 0 10px;">Asigna pisos completos de una vez; por ejemplo, Grupo 1 → pisos 1 al 10.</div>'+
+    App.UIHelpers.openModal('👥 Responsables por piso',
+      '<div style="font-size:12px; color:var(--texto-suave); margin:-6px 0 10px;">Indica qué grupo responde por cada piso (por ejemplo, Grupo 1 → pisos 1 al 10). Sirve para la calificación de calidad. El trabajo de cada día se asigna en <b>Durante → ① Asignar trabajo</b>.</div>'+
       '<label>Tipo</label><select id="aTipoEl">'+ts.map(t=>'<option>'+esc(t)+'</option>').join('')+'</select>'+
       '<label>Asignar a</label><select id="aQuien">'+opc+'</select>'+
       '<div style="display:flex; gap:8px;"><div style="flex:1;"><label>Desde piso</label><select id="aDesde">'+pisos.map(p=>'<option>'+esc(p)+'</option>').join('')+'</select></div>'+
@@ -6393,16 +6402,17 @@ App.Plan = (function(){
     return {total, instaladas, faltan, asignadasPend, sinAsignar: Math.max(faltan-asignadasPend,0), ritmo, necesario, proyeccion, fin, labRestantes,
       unidad: (i.produccion||{}).unidadNombre || 'unidades', ppcSemana: ppc(asg, lunes, h), asignaciones: asg.length, fuente: prod.fuente};
   }
-  function tarjetaMeta(i, m){
-    const btnAsignar = '<button class="btn-primary" style="margin-top:10px;" onclick="App.Plan.asignar(\''+i.id+'\')">+ Asignar trabajo</button>';
-    if(!m.total) return '<div class="card" style="border-left:3px solid var(--acento);"><h3>🎯 Meta del proyecto</h3>'+
-      '<div style="font-size:12.5px; color:var(--texto-suave); line-height:1.5;">Define el total a instalar (por ejemplo, 2700 puertas). Cada trabajo que asignes y registres se irá descontando solo.</div>'+
-      '<button class="btn-outline" onclick="App.Handlers.configurarProduccion(\''+i.id+'\')">Definir meta</button>'+btnAsignar+'</div>';
+  function tarjetaMeta(i, m, ganttHtml){
+    const irAntes = '<button class="btn-outline" style="margin-top:10px;" onclick="App.Router.cambiarFase(\'antes\')">'+(m.total? '✏️ Editar plan general (en Antes) ›' : '🎯 Definir plan general (en Antes) ›')+'</button>';
+    if(!m.total) return '<div class="card"><h3>📊 Cómo vamos</h3>'+
+      '<div style="font-size:12.5px; color:var(--texto-suave); line-height:1.5;">Para ver cuánto falta y si llegas a la entrega, define en <b style="color:var(--texto);">Antes</b> qué se instala, cuánto y para cuándo.</div>'+
+      (ganttHtml? '<details style="margin-top:10px;"><summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--texto-suave); padding:4px 0;">📊 Cronograma (Gantt)</summary><div style="margin-top:8px;">'+ganttHtml+'</div></details>' : '')+
+      irAntes+'</div>';
     const pct = m.total? Math.min(m.instaladas/m.total*100, 100) : 0;
     const pctTxt = pct>0 && pct<10 ? (Math.round(pct*10)/10).toString().replace('.',',') : Math.round(pct);
     let proy = '';
     if(m.faltan===0) proy = '<span style="color:#5FC48A;">✓ Meta cumplida</span>';
-    else if(!m.proyeccion) proy = '<span style="color:var(--texto-suave);">Aún sin ritmo para proyectar: registra avance unos días.</span>';
+    else if(!m.proyeccion) proy = '<span style="color:var(--texto-suave);">Aún sin ritmo para proyectar: reporta el avance unos días.</span>';
     else if(m.fin){ const d = dias(m.fin, m.proyeccion);
       proy = d<=0 ? '<span style="color:#5FC48A;">✓ A este ritmo terminas el <b>'+fmtFecha(m.proyeccion)+'</b>'+(d<0? ' ('+(-d)+' días antes)':'')+'</span>'
                   : '<span style="color:#FF5470;">⚠ A este ritmo terminas el <b>'+fmtFecha(m.proyeccion)+'</b>, '+d+' días después de la entrega</span>'; }
@@ -6410,7 +6420,7 @@ App.Plan = (function(){
     const ritmoCol = m.necesario==null ? 'var(--texto)' : (m.ritmo>=m.necesario? '#5FC48A' : '#FF5470');
     const k = (v,l,col)=> '<div style="flex:1; text-align:center;"><div style="font-family:\'Space Grotesk\',sans-serif; font-size:18px; font-weight:700; color:'+(col||'var(--texto)')+';">'+v+'</div><div style="font-size:9.5px; color:var(--texto-suave); line-height:1.2;">'+l+'</div></div>';
     const p = m.ppcSemana;
-    return '<div class="card" style="border-left:3px solid var(--acento);"><h3>🎯 Meta del proyecto <span class="count">'+pctTxt+'%</span></h3>'+
+    return '<div class="card"><h3>📊 Cómo vamos <span class="count">'+pctTxt+'%</span></h3>'+
       '<div style="font-family:\'Space Grotesk\',sans-serif; font-size:15px; font-weight:700;">Instaladas <span style="color:#5FC48A;">'+m.instaladas+'</span> · Faltan '+m.faltan+' <span style="color:var(--texto-suave); font-weight:500;">de '+m.total+' '+esc(m.unidad)+'</span></div>'+
       '<div class="progress-track" style="height:9px; margin:7px 0 10px;"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
       '<div style="display:flex; gap:4px; padding:6px 0; border-top:1px solid var(--borde); border-bottom:1px solid var(--borde);">'+
@@ -6420,8 +6430,9 @@ App.Plan = (function(){
         k(p.pct==null? '—' : p.pct+'%', 'plan cumplido<br>esta semana', p.pct==null? null : (p.pct>=80? '#5FC48A' : (p.pct>=60? '#F2B33D' : '#FF5470')))+
       '</div>'+
       '<div style="font-size:12px; margin-top:8px; line-height:1.5;">'+proy+'</div>'+
-      (p.total? '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">Plan cumplido = asignaciones terminadas a tiempo: '+p.cumplidas+' de '+p.total+' esta semana.</div>':'')+
-      btnAsignar+
+      (p.total? '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">Plan cumplido = trabajo asignado terminado a tiempo: '+p.cumplidas+' de '+p.total+' esta semana.</div>':'')+
+      (ganttHtml? '<details style="margin-top:10px;"><summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--texto-suave); padding:4px 0;">📊 Ver cronograma (Gantt)</summary><div style="margin-top:8px;">'+ganttHtml+'</div></details>' : '')+
+      irAntes+
     '</div>';
   }
   function proximosHtml(i){
@@ -6561,6 +6572,184 @@ App.Plan = (function(){
     await asignar(instId, {cant:falt, asignado:a.asignado, tiempoId:a.unidades.tiempoId, piso:a.piso||'', origenId:a.id, elementoIds:restantes, cuando: a.fechaFin<hoy()? 'hoy' : 'manana'});
   }
   return {_d: sumarD, asignaciones, hechasDe, estadoAsig, ESTADO_TXT, ppc, meta, tarjetaMeta, proximosHtml, asignar, _cuando, _piso, _recalc, _guardar, reprogramar, laborablesEntre};
+})();
+
+/* ===================== PLAN GENERAL (Antes): meta, fechas, capacidad e hitos ===================== */
+App.PlanGeneral = (function(){
+  const esc = s=> App.UIHelpers.esc(s);
+  const norm = s=> String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/(es|s)$/,'').trim();
+  const fmt1 = n=> String(Math.round(n*10)/10).replace('.',',');
+  function personasDe(i, trabCat){
+    const act = (i.personalFijoIds||[]).filter(id=>{ const t = trabCat.find(x=>x.id===id); return t && t.activo!==false; }).length;
+    return act + (i.personalExtra||[]).length;
+  }
+  function tiempoDe(i, tiempos){ const u = norm((i.produccion||{}).unidadNombre); return tiempos.find(t=> norm(t.unidad)===u) || null; }
+  // Cálculo del plan: ritmo necesario y capacidad del equipo
+  function calcular(o){
+    // o: {total, inicio, fin, personas, hpu, jor}
+    const r = {};
+    if(!o.total || !o.inicio || !o.fin || o.fin<o.inicio) return null;
+    r.lab = App.Plan.laborablesEntre(o.inicio, o.fin, o.jor.dias);
+    r.semanas = Math.max(Math.round((new Date(o.fin+'T00:00:00')-new Date(o.inicio+'T00:00:00'))/86400000/7*10)/10, 0.1);
+    r.porSemana = Math.ceil(o.total/r.semanas);
+    r.porDia = Math.ceil(o.total/Math.max(r.lab,1)*10)/10;
+    if(o.hpu && o.personas){
+      r.capDia = o.personas*o.jor.horas/o.hpu;
+      r.alcanza = r.capDia >= r.porDia;
+      r.personasNec = Math.ceil(r.porDia*o.hpu/o.jor.horas);
+      r.diasNec = Math.ceil(o.total/r.capDia);
+      r.finPosible = sumarDiasLaborables(o.inicio, r.diasNec, o.jor.dias);
+    }
+    return r;
+  }
+  function textoCapacidad(r, o){
+    if(!r) return '<span style="color:var(--texto-suave);">Completa el total y las fechas.</span>';
+    let s = 'Necesitas <b>'+r.porSemana+' por semana</b> · <b>'+fmt1(r.porDia)+' por día</b> ('+r.lab+' días laborables).';
+    if(!o.hpu) s += '<br><span style="color:var(--texto-suave);">Para saber si tu equipo alcanza, agrega en Ajustes un tiempo estándar para "'+esc(o.unidad||'la unidad')+'".</span>';
+    else if(!o.personas) s += '<br><span style="color:var(--texto-suave);">Asigna personal al proyecto (Antes → Equipo) para calcular la capacidad.</span>';
+    else if(r.alcanza) s += '<br><span style="color:#5FC48A;">✓ Alcanza: tus '+o.personas+' persona(s) pueden instalar unas <b>'+fmt1(r.capDia)+' por día</b> ('+fmt1(o.hpu)+' h c/u, jornada de '+o.jor.horas+' h).</span>';
+    else s += '<br><span style="color:#FF5470;">⚠ No alcanza: tus '+o.personas+' persona(s) instalan unas <b>'+fmt1(r.capDia)+' por día</b>. Necesitas <b>'+r.personasNec+' personas</b> (te faltan '+(r.personasNec-o.personas)+'), o con el equipo actual terminarías el <b>'+fmtFecha(r.finPosible)+'</b>.</span>';
+    return s;
+  }
+  // Avance de un hito
+  function avanceHito(i, h, instaladas){
+    const items = (i.elementos && i.elementos.items) || [];
+    if(h.pisoDesde!=null && h.pisoDesde!=='' && items.length){
+      const d = App.Elementos.pisoNum(h.pisoDesde), hs = App.Elementos.pisoNum(h.pisoHasta==null||h.pisoHasta===''? h.pisoDesde : h.pisoHasta);
+      const sel = items.filter(x=>{ const p = App.Elementos.pisoNum(x.piso); return p>=d && p<=hs; });
+      const ok = sel.filter(App.Elementos.aceptada).length;
+      return {hechas:ok, total:sel.length, pct: sel.length? Math.round(ok/sel.length*100) : 0};
+    }
+    const meta = num(h.cantidad);
+    return {hechas: Math.min(instaladas, meta), total: meta, pct: meta? Math.min(Math.round(instaladas/meta*100),100) : 0};
+  }
+  function estadoHito(h, av){ if(av.pct>=100) return 'completada'; if(h.fecha && h.fecha<hoy()) return 'atrasada'; return 'encurso'; }
+
+  function tarjeta(i, jor, tiempos, trabCat){
+    const prod = i.produccion || {};
+    const t = tiempoDe(i, tiempos), personas = personasDe(i, trabCat);
+    const o = {total: prod.unidadTotal||0, inicio: i.fechaInicio, fin: i.fechaFinPlan, personas, hpu: t? t.horasPorUnidad : 0, jor, unidad: prod.unidadNombre};
+    const btnPlan = '<button class="btn-primary" style="margin-top:10px;" onclick="App.PlanGeneral.definir(\''+i.id+'\')">'+(o.total? '✏️ Editar plan general' : '🎯 Definir plan general')+'</button>';
+    if(!o.total) return '<div class="card" style="border-left:3px solid var(--acento);"><h3>🎯 Plan general</h3>'+
+      '<div style="font-size:12.5px; color:var(--texto-suave); line-height:1.55;">Define <b style="color:var(--texto);">qué</b> se instala, <b style="color:var(--texto);">cuánto</b> y <b style="color:var(--texto);">para cuándo</b> (ej. 2700 puertas del 01/10/2026 al 02/10/2027). La app calcula cuántas por semana necesitas y si tu equipo alcanza. El trabajo diario se asigna en <b style="color:var(--texto);">Durante</b>.</div>'+btnPlan+'</div>';
+    const r = calcular(o);
+    const m = App.Plan.meta(i, jor);
+    const pct = m.total? m.instaladas/m.total*100 : 0;
+    const pctTxt = pct>0 && pct<10 ? fmt1(pct) : Math.round(pct);
+    // Hitos
+    const hitos = (i.hitos||[]).slice().sort((a,b)=> String(a.fecha||'').localeCompare(String(b.fecha||'')));
+    let prevF = i.fechaInicio || hoy();
+    const filas = hitos.map(h=>{
+      const av = avanceHito(i, h, m.instaladas), est = estadoHito(h, av);
+      const col = est==='completada'? '#5FC48A' : (est==='atrasada'? '#FF5470' : '#AAACA1');
+      const alcance = (h.pisoDesde!=null && h.pisoDesde!=='')? 'Pisos '+esc(h.pisoDesde)+(h.pisoHasta && h.pisoHasta!==h.pisoDesde? ' al '+esc(h.pisoHasta):'') : (h.cantidad? 'Llegar a '+h.cantidad+' '+esc(prod.unidadNombre||''):'');
+      return '<div class="envio-card" data-id="hito-'+h.id+'" style="border-left:3px solid '+col+'; cursor:pointer;" onclick="App.PlanGeneral.hito(\''+i.id+'\',\''+h.id+'\')">'+
+        '<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:13px;">🏁 '+esc(h.nombre)+'</b><span style="font-family:\'JetBrains Mono\',monospace; font-size:10.5px; font-weight:700; color:'+col+';">'+(est==='completada'?'CUMPLIDO':(est==='atrasada'?'ATRASADO':'HASTA '+fmtFecha(h.fecha).slice(0,5)))+'</span></div>'+
+        '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">'+alcance+' · límite '+fmtFecha(h.fecha)+' · '+av.hechas+' de '+av.total+'</div>'+
+        '<div style="display:flex; align-items:center; gap:8px; margin-top:6px;"><div style="flex:1; height:7px; background:var(--fondo-alt); border-radius:4px; overflow:hidden;"><div class="am-barra" style="height:100%; width:'+av.pct+'%; background:'+col+';"></div></div><b style="font-family:\'JetBrains Mono\',monospace; font-size:11.5px;">'+av.pct+'%</b></div>'+
+      '</div>';
+    }).join('');
+    const sintActs = hitos.map(h=>{ const av = avanceHito(i, h, m.instaladas); const ini = prevF; prevF = h.fecha && h.fecha>prevF ? sumarDiasLaborables(App.Plan._d(h.fecha,1), 1, 7) : prevF;
+      return {id:h.id, nombre:h.nombre, fechaInicio: ini<=h.fecha? ini : h.fecha, fechaFin:h.fecha, avances:[{pct:av.pct}], completada:false, _estado: estadoHito(h, av)}; }).filter(a=>a.fechaFin);
+    const gantt = sintActs.length? App.Charts.ganttChart({id:i.id, cronograma:sintActs, fechaFinPlan:i.fechaFinPlan}, 'mes', {onclick:(a)=>"App.PlanGeneral.hito('"+i.id+"','"+a.id+"')", columna:'HITO', leyenda:'Relleno = avance del hito · toca para editar'}) : '';
+    // Actividades antiguas (si existen) quedan visibles, plegadas
+    const viejas = (i.cronograma||[]).filter(a=> a.tipo!=='asignacion');
+    const viejasHtml = viejas.length? '<details style="margin-top:10px;"><summary style="cursor:pointer; font-size:12px; color:var(--texto-suave); padding:4px 0;">📋 '+viejas.length+' actividad(es) creada(s) antes · ver</summary>'+App.Charts.timelineCronograma(i, a=>a.tipo!=='asignacion').html+'</details>' : '';
+    return '<div class="card" style="border-left:3px solid var(--acento);"><h3>🎯 Plan general <span class="count">'+pctTxt+'%</span></h3>'+
+      '<div style="font-family:\'Space Grotesk\',sans-serif; font-size:15px; font-weight:700;">'+o.total+' '+esc(prod.unidadNombre||'unidades')+'</div>'+
+      '<div style="font-size:12px; color:var(--texto-suave); margin-top:1px;">'+(i.fechaInicio? fmtFecha(i.fechaInicio):'¿inicio?')+' → '+(i.fechaFinPlan? fmtFecha(i.fechaFinPlan):'¿entrega?')+(r? ' · '+fmt1(r.semanas)+' semanas':'')+'</div>'+
+      '<div class="progress-track" style="height:8px; margin:8px 0 4px;"><div class="progress-fill" style="width:'+Math.min(pct,100)+'%"></div></div>'+
+      '<div style="font-size:11.5px; color:var(--texto-suave);">Instaladas '+m.instaladas+' · faltan '+m.faltan+'</div>'+
+      '<div style="padding:9px 10px; border-radius:8px; background:var(--fondo-alt); font-size:12px; line-height:1.55; margin-top:10px;">'+textoCapacidad(r, o)+'</div>'+
+      '<div class="section-label">Hitos</div>'+
+      (filas || '<div style="font-size:12px; color:var(--texto-suave); padding:2px 0 6px;">Opcional: metas intermedias, por ejemplo "Pisos 1 al 10 → 31/12/2026".</div>')+
+      gantt+
+      '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">'+
+        '<button class="btn-outline" style="margin:0;" onclick="App.PlanGeneral.hito(\''+i.id+'\')">🏁 + Hito</button>'+
+        '<button class="btn-outline" style="margin:0;" onclick="App.Router.cambiarFase(\'durante\')">Asignar trabajo ›</button>'+
+      '</div>'+
+      btnPlan+viejasHtml+
+    '</div>';
+  }
+  // ---------- Definir / editar plan general ----------
+  async function definir(instId){
+    const i = await App.Repo.obtener(instId);
+    const jor = await App.Repo.parametrosJornada();
+    const tiempos = await App.Repo.catalogoActividades(), trabCat = await App.Repo.catalogoTrabajadores();
+    App.State.pg = {instId, jor, tiempos, personas: personasDe(i, trabCat)};
+    const p = i.produccion || {};
+    App.UIHelpers.openModal('🎯 Plan general',
+      '<div style="font-size:12px; color:var(--texto-suave); margin:-6px 0 10px;">Qué se instala, cuánto y para cuándo. Sin horas ni personas: eso se asigna día a día en Durante.</div>'+
+      '<label>¿Qué se instala?</label><input type="text" id="pgUnidad" value="'+esc(p.unidadNombre||'')+'" placeholder="Ej. puertas" oninput="App.PlanGeneral._prev()">'+
+      '<label>¿Cuántas en total?</label><input type="text" inputmode="numeric" id="pgTotal" value="'+(p.unidadTotal||'')+'" placeholder="Ej. 2700" oninput="App.PlanGeneral._prev()">'+
+      '<div style="display:flex; gap:8px;"><div style="flex:1;"><label>Inicio</label><input type="date" id="pgIni" value="'+(i.fechaInicio||hoy())+'" onchange="App.PlanGeneral._prev()"></div>'+
+      '<div style="flex:1;"><label>Entrega</label><input type="date" id="pgFin" value="'+(i.fechaFinPlan||'')+'" onchange="App.PlanGeneral._prev()"></div></div>'+
+      '<div id="pgCalc" style="padding:10px; border-radius:8px; background:var(--info-fondo); font-size:12px; line-height:1.55; margin-bottom:10px;"></div>'+
+      '<button class="btn-primary" onclick="App.PlanGeneral._guardar()">Guardar plan general</button>');
+    _prev();
+  }
+  function _prev(){
+    const st = App.State.pg; if(!st) return;
+    const g = id=>document.getElementById(id);
+    const unidad = g('pgUnidad').value.trim(), total = parseInt(g('pgTotal').value)||0;
+    const t = st.tiempos.find(x=> norm(x.unidad)===norm(unidad)) || null;
+    const o = {total, inicio:g('pgIni').value, fin:g('pgFin').value, personas:st.personas, hpu: t? t.horasPorUnidad : 0, jor:st.jor, unidad};
+    g('pgCalc').innerHTML = textoCapacidad(calcular(o), o);
+  }
+  async function _guardar(){
+    const st = App.State.pg; if(!st) return;
+    const g = id=>document.getElementById(id);
+    const unidad = g('pgUnidad').value.trim();
+    if(!unidad){ App.UIHelpers.toast('Escribe qué se instala (ej. puertas)'); return; }
+    const total = leerNum('pgTotal', {min:1, max:1000000, entero:true, etiqueta:'Total'}); if(total===undefined) return;
+    const ini = g('pgIni').value, fin = g('pgFin').value;
+    if(!ini || !fin){ App.UIHelpers.toast('⚠ Elige la fecha de inicio y la de entrega'); return; }
+    if(fin<ini){ App.UIHelpers.toast('⚠ La entrega debe ser posterior al inicio'); return; }
+    const i = await App.Repo.obtener(st.instId);
+    const semanas = Math.max((new Date(fin+'T00:00:00')-new Date(ini+'T00:00:00'))/86400000/7, 0.1);
+    i.produccion = Object.assign({zonas:[]}, i.produccion||{}, {unidadNombre:unidad, unidadTotal:total, metaSemanal: Math.ceil(total/semanas)});
+    i.fechaInicio = ini; i.fechaFinPlan = fin;
+    App.UIHelpers.closeModal();
+    try{ await App.Repo.guardar(i); }catch(e){ App.UIHelpers.restaurarModal(); App.UIHelpers.toast('⚠ No se pudo guardar. Intenta de nuevo.'); e._avisado = true; throw e; }
+    App.UIHelpers.descartarModalOculto(); await App.Router.refrescar();
+    App.UIHelpers.toast('Plan general guardado');
+  }
+  // ---------- Hitos ----------
+  async function hito(instId, hitoId){
+    const i = await App.Repo.obtener(instId);
+    const h = (i.hitos||[]).find(x=>x.id===hitoId) || null;
+    const items = (i.elementos && i.elementos.items) || [];
+    const pisos = items.length? Array.from(new Set(items.map(x=>String(x.piso)))).sort((a,b)=>App.Elementos.pisoNum(a)-App.Elementos.pisoNum(b)) : [];
+    const usarPisos = pisos.length>0;
+    App.State.hito = {instId, hitoId: h? h.id : null, usarPisos};
+    const opt = (sel)=> pisos.map(p=>'<option value="'+esc(p)+'"'+(String(sel)===p?' selected':'')+'>'+(/^\d+$/.test(p)?'Piso '+esc(p):esc(p))+'</option>').join('');
+    App.UIHelpers.openModal(h? 'Editar hito' : '🏁 Nuevo hito',
+      '<div style="font-size:12px; color:var(--texto-suave); margin:-6px 0 10px;">Una meta intermedia con fecha límite. Su avance se calcula solo.</div>'+
+      '<label>Nombre</label><input type="text" id="hNombre" value="'+esc(h? h.nombre : '')+'" placeholder="'+(usarPisos? 'Ej. Pisos 1 al 10' : 'Ej. Primer tercio de la obra')+'">'+
+      (usarPisos? '<div style="display:flex; gap:8px;"><div style="flex:1;"><label>Desde piso</label><select id="hDesde">'+opt(h? h.pisoDesde : pisos[0])+'</select></div><div style="flex:1;"><label>Hasta piso</label><select id="hHasta">'+opt(h? h.pisoHasta : pisos[Math.min(9,pisos.length-1)])+'</select></div></div>'
+                 : '<label>Llegar a (cantidad acumulada)</label><input type="text" inputmode="numeric" id="hCant" value="'+(h&&h.cantidad? h.cantidad : '')+'" placeholder="Ej. 900">')+
+      '<label>Fecha límite</label><input type="date" id="hFecha" value="'+(h? h.fecha : (i.fechaFinPlan||hoy()))+'">'+
+      '<button class="btn-primary" onclick="App.PlanGeneral._guardarHito()">Guardar hito</button>'+
+      (h? '<button class="btn-outline btn-danger" style="margin-top:12px;" onclick="App.Handlers._borrarItem(\''+instId+'\',\'hitos\',\''+h.id+'\')">🗑 Borrar hito</button>' : ''));
+  }
+  async function _guardarHito(){
+    const st = App.State.hito; if(!st) return;
+    const g = id=>document.getElementById(id);
+    const nombre = g('hNombre').value.trim(); if(!nombre){ App.UIHelpers.toast('Ponle un nombre al hito'); return; }
+    const fecha = g('hFecha').value; if(!fecha){ App.UIHelpers.toast('⚠ Elige la fecha límite'); return; }
+    const datos = {nombre, fecha};
+    if(st.usarPisos){ datos.pisoDesde = g('hDesde').value; datos.pisoHasta = g('hHasta').value;
+      if(App.Elementos.pisoNum(datos.pisoHasta) < App.Elementos.pisoNum(datos.pisoDesde)){ App.UIHelpers.toast('⚠ "Hasta piso" debe ser mayor o igual'); return; } }
+    else { const n = leerNum('hCant', {min:1, entero:true, etiqueta:'Cantidad'}); if(n===undefined) return; datos.cantidad = n; }
+    const i = await App.Repo.obtener(st.instId);
+    if(!Array.isArray(i.hitos)) i.hitos = [];
+    if(st.hitoId){ const h = i.hitos.find(x=>x.id===st.hitoId); if(h) Object.assign(h, datos); }
+    else i.hitos.push(Object.assign({id: uid('hito')}, datos));
+    App.UIHelpers.closeModal();
+    try{ await App.Repo.guardar(i); }catch(e){ App.UIHelpers.restaurarModal(); App.UIHelpers.toast('⚠ No se pudo guardar. Intenta de nuevo.'); e._avisado = true; throw e; }
+    App.UIHelpers.descartarModalOculto(); await App.Router.refrescar();
+  }
+  return {tarjeta, definir, _prev, _guardar, hito, _guardarHito, calcular, avanceHito};
 })();
 
 /* ===================== ROUTER ===================== */
