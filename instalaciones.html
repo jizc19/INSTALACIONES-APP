@@ -1209,7 +1209,8 @@ function hoy(){ return new Date().toISOString().slice(0,10); }
 function waNumero(tel){ let d = String(tel||'').replace(/[^\d]/g,''); if(d.startsWith('00')) d = d.slice(2); if(d.startsWith('0') && d.length===10) d = '593'+d.slice(1); return d; }
 function avanceActividad(a){
   if(!a) return 0;
-  if(a.completada) return 100;
+  if(a._derivado) return a._derivado.total? Math.min(Math.round(a._derivado.hechas/a._derivado.total*100),100) : 0;
+  if(a.completada && !a.cerrada) return 100;
   const avs = a.avances||[];
   if(a.unidades && a.unidades.cantidad>0){
     const hechas = avs.reduce((s,x)=>s+(x.cantidad||0),0);
@@ -1310,6 +1311,26 @@ App.Repo = (function(){
     }
     inst.herramientasComprar.forEach(h=>{ if(!h.estado) h.estado='pendiente'; if(h.fechaAnotado===undefined) h.fechaAnotado=''; });
     inst.cronograma.forEach(a=>{ if(!Array.isArray(a.avances)) a.avances=[]; if(!a.personas) a.personas=1; });
+    if(inst.produccion && inst.produccion.unidadTotal>0){
+      const nU = s=> String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/(es|s)$/,'').trim();
+      const uMeta = nU(inst.produccion.unidadNombre);
+      const etapas = inst.cronograma.filter(a=> a.tipo!=='asignacion' && a.unidades && a.unidades.cantidad>0 && (!uMeta || nU(a.unidades.unidad)===uMeta) && a.fechaInicio && a.fechaFin && (new Date(a.fechaFin+'T00:00:00')-new Date(a.fechaInicio+'T00:00:00'))/86400000 > 21);
+      if(etapas.length){
+        etapas.forEach(a=>{ delete a._derivado; });
+        const inst_ = calcularProduccion(inst).totalInstalado;
+        etapas.forEach(a=>{ a._derivado = {hechas: Math.min(inst_, a.unidades.cantidad), total: a.unidades.cantidad, meta:true}; if(inst_>=a.unidades.cantidad && !a.completada){ a.completada = true; a.fechaFinReal = a.fechaFinReal || hoy(); } });
+      }
+    }
+    if(App.Elementos && inst.elementos && Array.isArray(inst.elementos.items) && inst.elementos.items.length){
+      const porId = new Map(inst.elementos.items.map(x=>[x.id,x]));
+      inst.cronograma.forEach(a=>{
+        if(a.tipo!=='asignacion' || !Array.isArray(a.elementoIds) || !a.elementoIds.length){ delete a._derivado; return; }
+        let hechas = 0, ultima = '';
+        a.elementoIds.forEach(id=>{ const x = porId.get(id); if(x && App.Elementos.aceptada(x)){ hechas++; const f = x.corregido? (x.fechaCorreccion||x.fecha) : x.fecha; if(f && f>ultima) ultima = f; } });
+        a._derivado = {hechas, total:a.elementoIds.length};
+        if(!a.cerrada){ if(hechas>=a.elementoIds.length){ a.completada = true; if(!a.fechaFinReal) a.fechaFinReal = ultima || hoy(); } else { a.completada = false; delete a.fechaFinReal; } }
+      });
+    }
     return inst;
   }
   function guardar(inst){ return S.put('instalaciones', inst); }
@@ -1416,6 +1437,7 @@ App.Repo = (function(){
 
   // KPIs
   function calcularAvance(inst){
+    if(inst.produccion && inst.produccion.unidadTotal>0){ const pr = calcularProduccion(inst); return Math.min(Math.round(pr.totalInstalado/pr.unidadTotal*100),100); }
     const acts = inst.cronograma||[];
     if(!acts.length) return 0;
     // promedio ponderado por horas de trabajo (si no hay horas, peso 1)
@@ -1537,6 +1559,9 @@ App.Repo = (function(){
       p.eficiencia = (minutos>0 && p.instalado>0) ? Math.round((p.instalado/(minutos/60))*10)/10 : null;
       p.avanceProm = p.actividades ? Math.round(p.avanceSuma/p.actividades) : null;
     });
+    if(App.Plan){
+      App.Plan.asignaciones(inst).forEach(a=>{ if(!a.asignado || !a.fechaFin || a.fechaFin>hoy() || (a.fechaFin===hoy() && !a.completada && !a.cerrada)) return; const p = ensure(a.asignado); p.ppc = p.ppc || {total:0, cumplidas:0}; p.ppc.total++; if(App.Plan.estadoAsig(a)==='cumplida') p.ppc.cumplidas++; });
+    }
     if(App.Elementos){
       App.Elementos.calidadPorAsignado(inst).forEach(q=>{ const p = ensure(q.asignado); p.calidad = q; p.instalado = Math.max(p.instalado, q.aceptadas); });
     }
@@ -1741,7 +1766,7 @@ App.Charts = (function(){
 
   function ganttChart(inst, escala, opts){
     opts = opts||{};
-    const acts = (inst.cronograma||[]).filter(a=>a.fechaInicio && a.fechaFin).sort((a,b)=>a.fechaInicio.localeCompare(b.fechaInicio));
+    const acts = (inst.cronograma||[]).filter(a=>a.fechaInicio && a.fechaFin).filter(a=> !opts.filtro || opts.filtro(a)).sort((a,b)=>a.fechaInicio.localeCompare(b.fechaInicio));
     if(!acts.length) return '';
     escala = (escala==='dia'||escala==='mes') ? escala : 'semana';
     const hoyStr = new Date().toISOString().slice(0,10);
@@ -1812,8 +1837,8 @@ App.Charts = (function(){
     '</div>';
   }
 
-  function timelineCronograma(inst){
-    const acts = (inst.cronograma||[]).slice().sort((a,b)=> (a.fechaInicio||'9').localeCompare(b.fechaInicio||'9'));
+  function timelineCronograma(inst, filtro){
+    const acts = (inst.cronograma||[]).filter(a=> !filtro || filtro(a)).slice().sort((a,b)=> (a.fechaInicio||'9').localeCompare(b.fechaInicio||'9'));
     if(!acts.length) return {html:'', feasibilidad:null};
     const hoyStr = new Date().toISOString().slice(0,10);
     const riesgo = calcularRiesgo(inst);
@@ -1826,7 +1851,7 @@ App.Charts = (function(){
       const perd = App.Repo.horasPerdidasActividad(inst, a.id);
       const imp = (perd>0 && durH>0) ? Math.round(perd/durH*100) : 0;
       const dias = (a.fechaInicio&&a.fechaFin) ? diasEntre(a.fechaInicio, a.fechaFin)+1 : null;
-      const unid = a.unidades && a.unidades.cantidad ? (a.avances||[]).reduce((s,x)=>s+(x.cantidad||0),0)+' / '+a.unidades.cantidad+' '+esc(a.unidades.unidad||'') : '';
+      const unid = a.unidades && a.unidades.cantidad ? (a._derivado? a._derivado.hechas : (a.avances||[]).reduce((s,x)=>s+(x.cantidad||0),0))+' / '+a.unidades.cantidad+' '+esc(a.unidades.unidad||'')+(a._derivado && a._derivado.meta? ' (según la meta)':'') : '';
       return '<div class="envio-card" data-id="act-'+a.id+'" style="border-left:3px solid '+col+';">'+
         '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">'+
           '<div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
@@ -2011,6 +2036,7 @@ App.UIHelpers = (function(){
 App.Views = App.Views || {};
 
 App.Views.ajustes = async function(){
+  ++App.Views._turno;
   const {esc} = App.UIHelpers;
   const apiCfg = await App.Repo.config('anthropicApiKey');
   const nombreCfg = await App.Repo.config('miNombre');
@@ -2190,6 +2216,7 @@ App.Views.catalogoHerramientas = async function(){
 };
 
 App.Views.personalGlobal = async function(){
+  ++App.Views._turno;
   const {esc} = App.UIHelpers;
   const catTodos = await App.Repo.catalogoTrabajadores();
   const cat = catTodos.filter(t=>t.activo!==false);
@@ -2327,7 +2354,9 @@ App.Views.tareas = async function(tipo, id, nombre){
   document.getElementById('app').innerHTML = html;
 };
 
+App.Views._turno = 0;   // cada pantalla pedida recibe un turno; solo la última se dibuja
 App.Views.detalle = async function(inst, fase){
+  const miTurno = ++App.Views._turno;
   const {esc} = App.UIHelpers;
   const riesgo = App.Charts.calcularRiesgo(inst);
   const mostrarRiesgo = inst.estado==='curso' && riesgo.enRiesgo;
@@ -2338,6 +2367,7 @@ App.Views.detalle = async function(inst, fase){
   if(fase==='antes') faseHtml = await App.Views.faseAntes(inst);
   else if(fase==='durante') faseHtml = await App.Views.faseDurante(inst);
   else faseHtml = await App.Views.faseDespues(inst);
+  if(miTurno !== App.Views._turno) return;   // ya se pidió otra pantalla: no tapar la nueva
 
   const html =
     '<div class="topbar" style="padding-bottom:0;">'+
@@ -2502,7 +2532,9 @@ App.Views.faseAntes = async function(inst){
     ).join('')
   ) || '<div class="empty" style="padding:14px 0;">Sin personal extra</div>';
 
-  const tl = App.Charts.timelineCronograma(inst);
+  const soloEtapas = a=> a.tipo!=='asignacion';
+  const nAsig = (inst.cronograma||[]).filter(a=>a.tipo==='asignacion').length;
+  const tl = App.Charts.timelineCronograma(inst, soloEtapas);
   let feasHtml = '';
   if(tl.feasibilidad){
     const f = tl.feasibilidad;
@@ -2522,7 +2554,7 @@ App.Views.faseAntes = async function(inst){
   function botonEscala(val, label){
     return '<button class="btn-outline" style="margin:0; padding:7px 10px; font-size:11.5px; flex:1;'+(escalaActual===val?' background:var(--info-fondo); border-color:var(--acento); color:var(--acento);':'')+'" onclick="App.Handlers.cambiarEscalaGantt(\''+inst.id+'\',\''+val+'\')">'+label+'</button>';
   }
-  const ganttHtml = App.Charts.ganttChart(inst, escalaActual);
+  const ganttHtml = App.Charts.ganttChart(inst, escalaActual, {filtro: soloEtapas});
   const selectorEscala = ganttHtml ? '<div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;"><span style="font-size:11px; color:var(--texto-suave);">Ver por:</span>'+
     botonEscala('dia','Día')+botonEscala('semana','Semana')+botonEscala('mes','Mes')+'</div>' : '';
   const resumen = App.Charts.resumenCronograma(inst);
@@ -2532,13 +2564,22 @@ App.Views.faseAntes = async function(inst){
       '<div style="font-size:9.5px; color:var(--texto-suave);">'+label+'</div>'+
     '</div>';
   }
-  const resumenHtml = resumen.total.total>0 ? '<div style="font-size:10.5px; color:var(--texto-suave); margin-bottom:2px;">Avance promedio de las actividades de…</div><div style="display:flex; gap:4px; padding:6px 0 10px; margin-bottom:10px; border-bottom:1px solid var(--borde);">'+
+  let resumenHtml = resumen.total.total>0 ? '<div style="font-size:10.5px; color:var(--texto-suave); margin-bottom:2px;">Avance promedio de las actividades de…</div><div style="display:flex; gap:4px; padding:6px 0 10px; margin-bottom:10px; border-bottom:1px solid var(--borde);">'+
     resumenCelda('Hoy', resumen.hoy)+resumenCelda('Esta semana', resumen.semana)+resumenCelda('Este mes', resumen.mes)+resumenCelda('Proyecto', resumen.total)+
   '</div>' : '';
+  if(inst.produccion && inst.produccion.unidadTotal>0){
+    const mA = App.Plan.meta(inst);
+    const pA = mA.total? mA.instaladas/mA.total*100 : 0;
+    resumenHtml = '<div onclick="App.Router.cambiarFase(\'durante\')" style="cursor:pointer; padding:10px 12px; border-radius:10px; background:var(--fondo-alt); margin-bottom:10px;">'+
+      '<div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><b style="font-size:13px;">🎯 Meta: '+mA.instaladas+' de '+mA.total+' '+esc(mA.unidad)+'</b><b style="font-family:\'JetBrains Mono\',monospace; color:var(--acento);">'+(pA>0&&pA<10? (Math.round(pA*10)/10).toString().replace('.',',') : Math.round(pA))+'%</b></div>'+
+      '<div class="progress-track" style="height:7px; margin:6px 0 4px;"><div class="progress-fill" style="width:'+Math.min(pA,100)+'%"></div></div>'+
+      '<div style="font-size:11px; color:var(--texto-suave);">Faltan '+mA.faltan+' · el trabajo diario se asigna y registra en Durante ›</div></div>';
+  }
   const ayudaCrono = '<div style="padding:10px; border-radius:8px; background:var(--fondo-alt); font-size:11.5px; color:var(--texto-suave); line-height:1.55; margin-bottom:10px;">'+
-    '<b style="color:var(--texto);">Cómo se usa:</b> 1) Agrega cada actividad (la app calcula la fecha de fin según las personas y la jornada). '+
-    '2) Cada día, en <b style="color:var(--texto);">Durante → Plan de hoy</b>, registra cuánto se avanzó. 3) El Gantt se va llenando solo.</div>';
-  const cronoHtml = (inst.cronograma||[]).length ? resumenHtml + selectorEscala + ganttHtml + feasHtml + '<div class="section-label">Actividades</div>' + tl.html : ayudaCrono + '<div class="empty" style="padding:8px 0;">Sin actividades todavía</div>';
+    '<b style="color:var(--texto);">Aquí va el plan general:</b> la meta total (ej. 2700 puertas, en Durante → Meta) y las etapas grandes de la obra. '+
+    'El trabajo de cada día o semana se asigna a los grupos en <b style="color:var(--texto);">Durante → + Asignar trabajo</b>, y se descuenta solo de la meta.</div>';
+  const notaAsig = nAsig? '<div style="font-size:11.5px; color:var(--texto-suave); padding:8px 10px; border-radius:8px; background:var(--fondo-alt); margin-bottom:8px;">📌 '+nAsig+' asignación(es) diaria(s) a grupos: se ven y se registran en <b style="color:var(--texto);">Durante</b>.</div>' : '';
+  const cronoHtml = (inst.cronograma||[]).filter(soloEtapas).length ? resumenHtml + selectorEscala + ganttHtml + feasHtml + notaAsig + '<div class="section-label">Etapas y actividades</div>' + tl.html : ayudaCrono + notaAsig + '<div class="empty" style="padding:8px 0;">Sin etapas todavía</div>';
   const cronoChart = '';
 
   const docTipoIcono = {cotizacion:'📄', presupuesto:'💰', contrato:'📝', otro:'📎'};
@@ -2643,30 +2684,39 @@ App.Views.faseDurante = async function(inst){
 
   // ---------- Plan de hoy ----------
   const acts = inst.cronograma||[];
-  const deHoy = acts.filter(a=> !a.completada && a.fechaInicio && a.fechaFin && a.fechaInicio<=hoyStr && (a.fechaFin>=hoyStr || a.fechaFin<hoyStr));
+  const jorPlan = await App.Repo.parametrosJornada();
+  const metaP = App.Plan.meta(inst, jorPlan);
+  const esEtapaLarga = a=> a.tipo!=='asignacion' && a.fechaInicio && a.fechaFin && (new Date(a.fechaFin+'T00:00:00')-new Date(a.fechaInicio+'T00:00:00'))/86400000 > 21;
+  const deHoy = acts.filter(a=> !a.completada && a.fechaInicio && a.fechaFin && a.fechaInicio<=hoyStr && !esEtapaLarga(a))
+    .sort((a,b)=> (a.fechaFin<hoyStr? 0:1)-(b.fechaFin<hoyStr? 0:1) || String(a.asignado? a.asignado.nombre:'').localeCompare(String(b.asignado? b.asignado.nombre:'')));
   const planHtml = deHoy.map(a=>{
     const av = avanceActividad(a), atras = a.fechaFin<hoyStr;
     const col = atras? 'var(--peligro)' : 'var(--g-encurso)';
     const restan = Math.round((new Date(a.fechaFin+'T00:00:00')-new Date(hoyStr+'T00:00:00'))/86400000);
+    const asg = a.tipo==='asignacion', hechas = App.Plan.hechasDe(a), total = a.unidades? a.unidades.cantidad : null;
+    const porPiso = asg && Array.isArray(a.elementoIds) && a.elementoIds.length;
+    const falta = (total!=null && hechas!=null)? Math.max(total-hechas,0) : 0;
     return '<div class="envio-card" data-id="act-'+a.id+'" style="border-left:3px solid '+col+';">'+
-      '<div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-size:13px; font-weight:700;">'+esc(a.nombre)+'</div>'+
+      '<div style="display:flex; justify-content:space-between; gap:8px;"><div style="font-size:13px; font-weight:700;">'+(asg? '📌 ':'')+esc(a.nombre)+'</div>'+
       '<span style="'+mono+' font-size:10px; font-weight:700; color:'+col+'; white-space:nowrap;">'+(atras? 'ATRASADA '+(-restan)+'d' : (restan===0?'TERMINA HOY':'QUEDAN '+restan+'d'))+'</span></div>'+
-      '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">'+(a.asignado? (a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre)+' · ':'')+'hasta '+fmtFecha(a.fechaFin)+'</div>'+
+      '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">'+(a.asignado? (a.asignado.tipo==='grupo'?'👥 ':'👤 ')+esc(a.asignado.nombre)+' · ':'')+(a.fechaInicio===a.fechaFin? fmtFecha(a.fechaFin) : fmtFecha(a.fechaInicio)+' → '+fmtFecha(a.fechaFin))+(total!=null && hechas!=null? ' · <b style="color:var(--texto);">'+hechas+' de '+total+'</b>':'')+'</div>'+
       '<div style="display:flex; align-items:center; gap:8px; margin-top:7px;"><div style="flex:1; height:8px; background:var(--fondo-alt); border-radius:5px; overflow:hidden;"><div class="am-barra" style="height:100%; width:'+av+'%; background:'+col+';"></div></div><b style="'+mono+' font-size:12px;">'+av+'%</b></div>'+
-      '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Handlers.registrarAvanceActividad(\''+inst.id+'\',\''+a.id+'\')">📈 Registrar avance de hoy</button>'+
+      (porPiso? '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Router.abrirFiscalizacion(\''+inst.id+'\',\''+jsArg(a.piso)+'\')">🔍 Calificar las puertas de este trabajo</button>'
+               : '<button class="btn-primary" style="margin-top:8px; padding:9px;" onclick="App.Handlers.registrarAvanceActividad(\''+inst.id+'\',\''+a.id+'\')">📈 Registrar avance de hoy</button>')+
+      (asg && atras && falta? '<button class="btn-outline" style="margin-top:6px; padding:9px; border-color:var(--acento); color:var(--acento);" onclick="App.Plan.reprogramar(\''+inst.id+'\',\''+a.id+'\')">↪ Reprogramar lo que faltó ('+falta+')</button>' : '')+
     '</div>';
-  }).join('') || '<div class="empty" style="padding:12px 0;">No hay actividades programadas para hoy.'+(acts.length?'':'<br>Agrégalas en <b>Antes → Cronograma</b>.')+'</div>';
+  }).join('') || '<div class="empty" style="padding:12px 0;">No hay trabajo asignado para hoy.<br>Toca <b>+ Asignar trabajo</b> para repartirlo a un grupo.</div>';
 
   const hechosHoy = [];
   acts.forEach(a=> (a.avances||[]).forEach(av=>{ if(av.fecha===hoyStr) hechosHoy.push('✅ <b>'+esc(a.nombre)+'</b>: '+(av.cantidad!=null && a.unidades? '+'+av.cantidad+' '+esc(a.unidades.unidad||'') : 'llegó a '+av.pct+'%')+(av.nota? ' — '+esc(av.nota):'')); }));
   (inst.avanceRegistros||[]).forEach(r=>{ if(r.fecha===hoyStr){ const z=((inst.produccion||{}).zonas||[]).find(x=>x.id===r.zonaId); hechosHoy.push('✅ Producción '+esc(z?z.nombre:'')+': <b>+'+r.cantidad+'</b> '+esc((inst.produccion||{}).unidadNombre||'')); } });
-  acts.forEach(a=>{ if(a.completada && a.fechaFinReal===hoyStr) hechosHoy.push('🏁 Terminada: <b>'+esc(a.nombre)+'</b>'); });
+  acts.forEach(a=>{ if(a.completada && a.fechaFinReal===hoyStr) hechosHoy.push(a.cerrada? '↪ Reprogramada: <b>'+esc(a.nombre)+'</b> (faltaron '+(a.trasladado||0)+')' : '🏁 Terminada: <b>'+esc(a.nombre)+'</b>'); });
   const hechosHtml = hechosHoy.length ? hechosHoy.map(h=>'<div style="font-size:12.5px; padding:5px 0; border-bottom:1px solid var(--borde);">'+h+'</div>').join('') : '<div class="empty" style="padding:8px 0;">Todavía no se registra avance hoy</div>';
 
   // ---------- Gantt ----------
   const esc2 = (App.State.ganttEscala[inst.id] && App.State.ganttEscala[inst.id]!=='auto') ? App.State.ganttEscala[inst.id] : 'semana';
   const bEsc = (v,l)=> '<button class="btn-outline" style="margin:0; padding:7px 10px; font-size:11.5px; flex:1;'+(esc2===v?' background:var(--info-fondo); border-color:var(--acento); color:var(--acento);':'')+'" onclick="App.Handlers.cambiarEscalaGantt(\''+inst.id+'\',\''+v+'\')">'+l+'</button>';
-  const gantt = App.Charts.ganttChart(inst, esc2);
+  const gantt = App.Charts.ganttChart(inst, esc2, {filtro: a=> a.tipo!=='asignacion' || (a.fechaFin>=App.Plan._d(hoyStr,-7) && a.fechaInicio<=App.Plan._d(hoyStr,14))});
 
   // ---------- Producción ----------
   const prod = inst.produccion || {unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas:[]};
@@ -2759,6 +2809,7 @@ App.Views.faseDurante = async function(inst){
       '</div>'+
       (q? fila('Instalación revisada ('+q.revisadas+')', q.ok, q.falta, q.no, q.ok+' de '+q.revisadas+' aceptadas a la primera'+(q.corregidos? ' · ✅ '+q.corregidos+' corregidas':'')) : '')+
       (d? fila('Días calificados ('+(d.ok+d.falta+d.no)+')', d.ok, d.falta, d.no) : '')+
+      (p.ppc && p.ppc.total? '<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-radius:8px; background:var(--fondo-alt); margin-top:6px; font-size:11.5px;"><span style="color:var(--texto-suave);">📋 Plan cumplido (trabajo asignado terminado a tiempo)</span><b style="color:'+(p.ppc.cumplidas/p.ppc.total>=.8? '#5FC48A' : (p.ppc.cumplidas/p.ppc.total>=.6? '#F2B33D' : '#FF5470'))+';">'+p.ppc.cumplidas+' de '+p.ppc.total+' · '+Math.round(p.ppc.cumplidas/p.ppc.total*100)+'%</b></div>' : '')+
       '<div style="font-size:10.5px; color:var(--texto-suave); margin-top:6px;">⏱ '+App.Repo.fmtMinutos(p.minutos)+' trabajadas'+(p.avanceProm!=null? ' · 📋 avance de actividades '+p.avanceProm+'%':'')+'</div>'+
     '</div>';
   }).join('') || '<div class="empty" style="padding:10px 0;">Aparecerá cuando califiques la instalación o el día de un grupo o trabajador</div>';
@@ -2784,9 +2835,12 @@ App.Views.faseDurante = async function(inst){
       '<div class="kpi'+(perdHoy?' alert':'')+'"><div class="num">'+(Math.round(perdHoy*10)/10)+'h</div><div class="lbl">Horas perdidas hoy</div></div>'+
     '</div></div>'+
 
-    '<div class="card"><h3>📋 Plan de hoy <span class="count">'+deHoy.length+' actividad(es)</span></h3>'+planHtml+
+    App.Plan.tarjetaMeta(inst, metaP)+
+    '<div class="card"><h3>📋 Plan de hoy <span class="count">'+deHoy.length+' trabajo(s)</span></h3>'+planHtml+
+      '<button class="btn-outline" style="margin-top:4px;" onclick="App.Plan.asignar(\''+inst.id+'\')">+ Asignar trabajo</button>'+
       '<div class="section-label">Lo que se hizo hoy</div>'+hechosHtml+'</div>'+
 
+    App.Plan.proximosHtml(inst)+
     ((inst.elementos && (inst.elementos.items||[]).length)? App.Elementos.tarjeta(inst, 'durante') : '')+
     (function(){
       const todos = inst.transporte||[];
@@ -2814,7 +2868,7 @@ App.Views.faseDurante = async function(inst){
       '<button class="btn-outline" onclick="App.Handlers.agregarEvaluacion(\''+inst.id+'\')">+ Calificar el día</button></div>'+
 
     '<div class="card"><h3>📈 Rendimiento por grupo / trabajador</h3>'+
-      '<div style="font-size:11px; color:var(--texto-suave); margin-bottom:4px;">Se arma con tus botones: 🟢 en "Calificar instalación" (cada puerta o mueble) y en "Calificar el día". 🟢 Bueno = 85 pts o más · 🟡 Regular = 70 a 84 · 🔴 Bajo = menos de 70.</div>'+
+      '<div style="font-size:11px; color:var(--texto-suave); margin-bottom:4px;">Se arma con tus botones: 🟢 en "Calificar instalación" (cada puerta o mueble) y en "Calificar el día". '+(function(){ const u = App.Elementos.umbrales(); return '🟢 Bueno = '+u.bueno+' pts o más · 🟡 Regular = '+u.regular+' a '+(u.bueno-1)+' · 🔴 Bajo = menos de '+u.regular+' (con 🟡 = '+App.Elementos.peso()+' pts).'; })()+'</div>'+
       rendimientoHtml+'</div>'+
 
     '<div class="card"><h3>📄 Reportes</h3>'+
@@ -4162,7 +4216,8 @@ App.Handlers = (function(){
   async function configurarProduccion(instId){
     const i = await inst(instId);
     const p = i.produccion || {unidadNombre:'', unidadTotal:0, metaSemanal:0, zonas:[]};
-    openModal('Configurar producción',
+    openModal('🎯 Meta del proyecto',
+      '<div style="font-size:12px; color:var(--texto-suave); margin:-6px 0 10px;">El total que hay que instalar en toda la obra. Cada trabajo asignado y registrado se descuenta de aquí.</div>'+
       '<label>¿Qué se está instalando? (unidad)</label><input type="text" id="prUnidad" value="'+esc(p.unidadNombre)+'" placeholder="Ej. puertas">'+
       '<label>Cantidad total del proyecto</label><input type="number" id="prTotal" value="'+(p.unidadTotal||'')+'" placeholder="Ej. 2700">'+
       '<label>Meta semanal (opcional)</label><input type="number" id="prMeta" value="'+(p.metaSemanal||'')+'" placeholder="Ej. 100">'+
@@ -4295,7 +4350,8 @@ App.Handlers = (function(){
     document.querySelectorAll('.evBtn').forEach(b=>{ const on = b.dataset.k===k; b.style.background = on? b.dataset.col : 'transparent'; b.style.color = on? '#0B0909' : 'var(--texto)'; });
   }
   function _sugerirBoton(v){
-    const k = v>=85? 'ok' : (v>=70? 'falta' : 'no');
+    const u = App.Elementos.umbrales();
+    const k = v>=u.bueno? 'ok' : (v>=u.regular? 'falta' : 'no');
     _elegirCalif(k, true);
     return {ok:'🟢 Bien', falta:'🟡 Con detalles', no:'🔴 Mal'}[k];
   }
@@ -4558,6 +4614,7 @@ App.Handlers = (function(){
   function _fh(mins){ const h=Math.floor(mins/60), m=mins%60; return h+'h '+String(m).padStart(2,'0')+'m'; }
   function _estadoAct(a){
     const h = hoy();
+    if(a.cerrada) return 'Incompleta (reprogramada)';
     if(a.completada) return 'Completada';
     if(a.fechaFin && h>a.fechaFin) return 'Atrasada';
     if(a.fechaInicio && h>=a.fechaInicio) return 'En curso';
@@ -4588,11 +4645,21 @@ App.Handlers = (function(){
     P.kpis(ctx, k);
 
     // Cronograma
-    P.seccion(ctx, 'Cronograma');
-    const acts = (i.cronograma||[]).filter(a=> !a.fechaInicio || !a.fechaFin || (a.fechaInicio<=hasta && a.fechaFin>=desde) || (!a.completada && a.fechaFin<desde));
+    P.seccion(ctx, 'Plan general (etapas)');
+    const acts = (i.cronograma||[]).filter(a=> a.tipo!=='asignacion').filter(a=> !a.fechaInicio || !a.fechaFin || (a.fechaInicio<=hasta && a.fechaFin>=desde) || (!a.completada && a.fechaFin<desde));
     P.tabla(ctx, ['Actividad','Asignado a','Inicio','Fin','Avance','Estado'],
       acts.map(a=>[a.nombre, a.asignado? a.asignado.nombre:'-', a.fechaInicio?fmtFecha(a.fechaInicio):'-', a.fechaFin?fmtFecha(a.fechaFin):'-', avanceActividad(a)+'%', _estadoAct(a)]),
       [40,22,13,13,10,13], {vacio:'Sin actividades en este periodo', estilo:(ri,ci,v)=> ci===5? {bold:true, color: v==='Atrasada'?C.rojo:(v==='Completada'?C.verde:C.tinta)} : null});
+
+    // Asignaciones (programación diaria/semanal)
+    const asgP = App.Plan.asignaciones(i).filter(a=> a.fechaInicio<=hasta && a.fechaFin>=desde).sort((a,b)=>a.fechaInicio.localeCompare(b.fechaInicio));
+    if(asgP.length){
+      const pp = App.Plan.ppc(asgP, desde, hasta>hoy()? hoy() : hasta);
+      P.seccion(ctx, 'Programación: trabajo asignado'+(pp.pct!=null? ' · Plan cumplido '+pp.pct+'% ('+pp.cumplidas+' de '+pp.total+')' : ''));
+      P.tabla(ctx, ['Fechas','Asignado a','Trabajo','Cant.','Hechas','Estado'],
+        asgP.map(a=>{ const e = App.Plan.estadoAsig(a); return [a.fechaInicio===a.fechaFin? fmtFecha(a.fechaInicio) : fmtFecha(a.fechaInicio)+' al '+fmtFecha(a.fechaFin), a.asignado? a.asignado.nombre : '-', a.nombre.split(' · ').slice(0,2).join(' · '), String(a.unidades? a.unidades.cantidad : '-'), String(App.Plan.hechasDe(a)==null? '-' : App.Plan.hechasDe(a)), App.Plan.ESTADO_TXT[e][0].replace('✓ ','')+(a.trasladado? ' (reprogramado '+a.trasladado+')':'')]; }),
+        [16,18,30,8,9,19], {estilo:(ri,ci,v)=> ci===5? {bold:true, color: /^Cumplida/.test(v)? C.verde : (/Incompleta|Atrasada/.test(v)? C.rojo : (/tarde/.test(v)? C.ambar : C.tinta))} : null});
+    }
 
     // Registro de elementos
     if(App.Elementos.lista(i).length){
@@ -5331,6 +5398,7 @@ if('serviceWorker' in navigator){
 
 
 App.Views.dashboard = async function(){
+  ++App.Views._turno;
   const {esc} = App.UIHelpers;
   const instalaciones = await App.Repo.listar();
   instalaciones.sort((a,b)=> (b.creado||'').localeCompare(a.creado||''));
@@ -5641,12 +5709,12 @@ App.Views._resumenObraHoy = function(i, trabCat, miNombre){
   const enSitio = equipo.filter(m=> regs.some(r=>r.trabajadorId===m.id && r.esExtra===m.esExtra && r.entrada && !r.salida));
   const sinMarcar = equipo.filter(m=> m.id!=='YO' && !regs.some(r=>r.trabajadorId===m.id && r.esExtra===m.esExtra));
   const minutos = regs.reduce((s,r)=>s+minDe(r),0);
-  const acts = (i.cronograma||[]).filter(a=> !a.completada && a.fechaInicio && a.fechaFin && a.fechaInicio<=hoyStr);
+  const acts = (i.cronograma||[]).filter(a=> !a.completada && a.fechaInicio && a.fechaFin && a.fechaInicio<=hoyStr && (a.tipo==='asignacion' || (new Date(a.fechaFin+'T00:00:00')-new Date(a.fechaInicio+'T00:00:00'))/86400000 <= 21));
   const atrasadas = acts.filter(a=> a.fechaFin<hoyStr);
   const hechos = [];
   (i.cronograma||[]).forEach(a=> (a.avances||[]).forEach(av=>{ if(av.fecha===hoyStr) hechos.push({act:a.nombre, txt: av.cantidad!=null && a.unidades? '+'+av.cantidad+' '+(a.unidades.unidad||'') : 'llegó a '+av.pct+'%', nota:av.nota||''}); }));
   (i.avanceRegistros||[]).forEach(r=>{ if(r.fecha===hoyStr){ const z=((i.produccion||{}).zonas||[]).find(x=>x.id===r.zonaId); hechos.push({act:'Producción '+(z?z.nombre:''), txt:'+'+r.cantidad+' '+((i.produccion||{}).unidadNombre||''), nota:r.nota||''}); } });
-  (i.cronograma||[]).forEach(a=>{ if(a.completada && a.fechaFinReal===hoyStr) hechos.push({act:a.nombre, txt:'terminada', nota:''}); });
+  (i.cronograma||[]).forEach(a=>{ if(a.completada && a.fechaFinReal===hoyStr) hechos.push({act:a.nombre, txt: a.cerrada? 'reprogramada (faltaron '+(a.trasladado||0)+')' : 'terminada', nota:''}); });
   const problemas = (i.problemas||[]).filter(p=>p.estado!=='resuelto');
   const perdidasHoy = (i.bitacoraDiaria||[]).filter(b=>b.fecha===hoyStr).reduce((s,b)=>s+num(b.horasPerdidas),0) + (i.problemas||[]).filter(p=>p.fecha===hoyStr).reduce((s,p)=>s+num(p.horasPerdidas),0);
   const pend = App.Repo.pendientesDe(i);
@@ -5656,6 +5724,7 @@ App.Views._resumenObraHoy = function(i, trabCat, miNombre){
 };
 
 App.Views.miDia = async function(){
+  ++App.Views._turno;
   const {esc} = App.UIHelpers;
   const todas = await App.Repo.listar();
   const curso = todas.filter(i=>i.estado==='curso');
@@ -5714,11 +5783,12 @@ App.Views.miDia = async function(){
       (alertas.length? '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:12px; font-weight:600; margin-top:8px;">'+alertas.join('')+'</div>':'')+
       '<div class="section-label" style="margin-top:10px;">Plan de hoy</div>'+plan+
       '<div class="section-label">Hecho hoy</div>'+hechos+
-      (function(){ const g = App.Charts.ganttChart(i, escO); return g? '<details open style="margin-top:10px;"><summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--texto-suave); padding:4px 0;">📊 Cronograma de la obra</summary><div style="margin-top:8px;">'+g+'</div></details>' : ''; })()+
-      '<div style="display:flex; gap:8px; margin-top:10px;">'+
-        '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.agregarBitacora(\''+i.id+'\')">📝 Bitácora</button>'+
-        '<button class="btn-outline" style="margin:0;" onclick="App.Handlers.agregarProblema(\''+i.id+'\')">⚠️ Problema</button>'+
-        '<button class="btn-outline" style="margin:0;" onclick="App.Router.abrirInstalacion(\''+i.id+'\')">Abrir ›</button>'+
+      (function(){ const g = App.Charts.ganttChart(i, escO, {filtro: a=> a.tipo!=='asignacion' || (a.fechaFin>=App.Plan._d(hoyStr,-7) && a.fechaInicio<=App.Plan._d(hoyStr,14))}); return g? '<details open style="margin-top:10px;"><summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--texto-suave); padding:4px 0;">📊 Cronograma de la obra</summary><div style="margin-top:8px;">'+g+'</div></details>' : ''; })()+
+      '<button class="btn-primary" style="margin-top:10px;" onclick="App.Plan.asignar(\''+i.id+'\')">+ Asignar trabajo</button>'+
+      '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px;">'+
+        '<button class="btn-outline" style="margin:0; white-space:nowrap; padding:12px 4px;" onclick="App.Handlers.agregarBitacora(\''+i.id+'\')">📝 Bitácora</button>'+
+        '<button class="btn-outline" style="margin:0; white-space:nowrap; padding:12px 4px;" onclick="App.Handlers.agregarProblema(\''+i.id+'\')">⚠️ Problema</button>'+
+        '<button class="btn-outline" style="margin:0; white-space:nowrap; padding:12px 4px;" onclick="App.Router.abrirInstalacion(\''+i.id+'\')">Abrir ›</button>'+
       '</div>'+
     '</div>';
   }).join('');
@@ -5846,10 +5916,13 @@ App.Elementos = (function(){
   function peso(){ return (App.State && App.State.pesoAmarillo!=null)? App.State.pesoAmarillo : 70; }
   function aceptada(x){ return x.estado==='ok' || ((x.estado==='falta'||x.estado==='no') && !!x.corregido); }
   function entregaDe(x){ return x.entrega || (aceptada(x)? 'entregado' : 'no'); }
+  // Cortes del semáforo según el puntaje del 🟡: Regular desde el 🟡; Bueno desde la mitad entre 🟡 y 🟢
+  function umbrales(){ const p = peso(); return {bueno: Math.ceil((100+p)/2), regular: Math.max(p, 1)}; }
   function nivel(ix){
     if(ix==null) return null;
-    if(ix>=85) return {emoji:'🟢', txt:'Bueno', color:'#5FC48A'};
-    if(ix>=70) return {emoji:'🟡', txt:'Regular', color:'#F2B33D'};
+    const u = umbrales();
+    if(ix>=u.bueno) return {emoji:'🟢', txt:'Bueno', color:'#5FC48A'};
+    if(ix>=u.regular) return {emoji:'🟡', txt:'Regular', color:'#F2B33D'};
     return {emoji:'🔴', txt:'Bajo', color:'#FF5470'};
   }
   function puntos(k){ return k==='ok'? 100 : (k==='falta'? peso() : (k==='no'? 0 : null)); }
@@ -5903,9 +5976,11 @@ App.Elementos = (function(){
 
   // ---------- Vista de fiscalización ----------
   async function vista(instId){
+    ++App.Views._turno;
     const i = await App.Repo.obtener(instId); if(!i) return;
     const st = App.State.fisc = App.State.fisc || {};
-    if(st.instId!==instId){ st.instId=instId; st.tipo=null; st.abierto=null; st.filtro='todos'; }
+    if(st.instId!==instId){ st.instId=instId; st.tipo=null; st.abierto=st._abrirPiso||null; st.filtro='todos'; }
+    st._abrirPiso = null;
     const ent = st.modo==='entrega';
     const ts = tipos(i); if(!st.tipo || !ts.includes(st.tipo)) st.tipo = ts[0]||null;
     const items = lista(i).filter(x=>x.tipo===st.tipo).sort(ordenar);
@@ -6253,8 +6328,239 @@ App.Elementos = (function(){
     App.UIHelpers.toast(n+' '+plural(tipo).toLowerCase()+' '+(asig? 'asignadas a '+asig.nombre : 'sin asignación'));
   }
 
-  return {ESTADOS, nivel, puntos, peso, aceptada, entregaDe, resumen, calidadPorAsignado, _corregir, marcarEntrega, _setEntrega, pisoEntregado, lista, tipos, conteo, plural, ordenar, pisoNum, tarjeta, vista, marcar, _set, pisoCorrecto, _pisoOk, _tipo, _filtro, _abrir,
+  return {ESTADOS, nivel, umbrales, puntos, peso, aceptada, entregaDe, resumen, calidadPorAsignado, _corregir, marcarEntrega, _setEntrega, pisoEntregado, lista, tipos, conteo, plural, ordenar, pisoNum, tarjeta, vista, marcar, _set, pisoCorrecto, _pisoOk, _tipo, _filtro, _abrir,
     generar, _prevGen, _confirmarGen, importar, _archivoElegido, pegar, _pegadoListo, _encCambio, _confirmarImp, asignar, _confirmarAsig, _parseTexto};
+})();
+
+/* ===================== PROGRAMACIÓN: META + ASIGNACIONES DIARIAS ===================== */
+App.Plan = (function(){
+  const esc = s=> App.UIHelpers.esc(s);
+  const norm = s=> String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/(es|s)$/,'').trim();
+  const sumarD = (f,n)=>{ const d=new Date(f+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+  const dias = (a,b)=> Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
+  function esLaborable(f, dS){ const w = new Date(f+'T00:00:00').getDay(); return dS>=7 || (dS===6? w!==0 : (w!==0 && w!==6)); }
+  function laborablesEntre(a, b, dS){ let n=0; for(let f=a; f<=b; f=sumarD(f,1)){ if(esLaborable(f,dS)) n++; if(n>4000) break; } return n; }
+  function asignaciones(i){ return (i.cronograma||[]).filter(a=>a.tipo==='asignacion'); }
+  function hechasDe(a){
+    if(a._derivado) return a._derivado.hechas;
+    if(a.unidades && a.unidades.cantidad) return Math.min((a.avances||[]).reduce((s,x)=>s+(x.cantidad||0),0), a.unidades.cantidad);
+    return null;
+  }
+  function estadoAsig(a, h){
+    h = h || hoy();
+    if(a.cerrada) return 'incompleta';
+    if(a.completada) return (a.fechaFinReal && a.fechaFin && a.fechaFinReal>a.fechaFin)? 'tarde' : 'cumplida';
+    if(a.fechaFin && a.fechaFin<h) return 'atrasada';
+    if(a.fechaInicio && a.fechaInicio>h) return 'programada';
+    return 'encurso';
+  }
+  const ESTADO_TXT = {cumplida:['✓ Cumplida','#5FC48A'], tarde:['✓ Terminada tarde','#F2B33D'], incompleta:['Incompleta','#FF5470'], atrasada:['Atrasada','#FF5470'], programada:['Programada','#AAACA1'], encurso:['En curso','#AAACA1']};
+  function ppc(lista, desde, hasta){
+    const h = hoy();
+    const venc = lista.filter(a=> a.fechaFin && a.fechaFin<=hasta && (!desde || a.fechaFin>=desde) && (a.fechaFin<h || a.completada || a.cerrada));
+    const ok = venc.filter(a=> estadoAsig(a)==='cumplida').length;
+    return {total:venc.length, cumplidas:ok, pct: venc.length? Math.round(ok/venc.length*100) : null};
+  }
+  function eventosInstalacion(i){
+    const ev = [];
+    const prod = i.produccion||{}, u = norm(prod.unidadNombre);
+    const items = (i.elementos && i.elementos.items) || [];
+    if(items.length){
+      items.forEach(x=>{ if(App.Elementos.aceptada(x)) ev.push({fecha: x.corregido? (x.fechaCorreccion||x.fecha) : x.fecha, n:1}); });
+    } else {
+      (i.avanceRegistros||[]).forEach(r=> ev.push({fecha:r.fecha, n:r.cantidad||0}));
+      (i.cronograma||[]).forEach(a=>{ if(a.unidades && (!u || norm(a.unidades.unidad)===u)) (a.avances||[]).forEach(av=> ev.push({fecha:av.fecha, n:av.cantidad||0})); });
+    }
+    return ev.filter(e=>e.fecha);
+  }
+  function meta(i, jor){
+    jor = jor || {horas:8, dias:6};
+    const h = hoy();
+    const prod = App.Repo.calcularProduccion(i);
+    const total = prod.unidadTotal||0, instaladas = prod.totalInstalado||0, faltan = Math.max(total-instaladas, 0);
+    const asg = asignaciones(i);
+    const asignadasPend = asg.filter(a=>!a.completada && !a.cerrada).reduce((s,a)=> s + Math.max((a.unidades? a.unidades.cantidad:0) - (hechasDe(a)||0), 0), 0);
+    const desde = sumarD(h, -13);
+    const hechoVentana = eventosInstalacion(i).filter(e=> e.fecha>=desde && e.fecha<=h).reduce((s,e)=>s+e.n, 0);
+    const inicio = i.fechaInicioReal || i.fechaInicio || desde;
+    const labVentana = Math.max(laborablesEntre(inicio>desde? inicio : desde, h, jor.dias), 1);
+    const ritmo = Math.round(hechoVentana/labVentana*10)/10;
+    const fin = i.fechaFinPlan;
+    const labRestantes = fin && fin>=h ? laborablesEntre(h, fin, jor.dias) : 0;
+    const necesario = fin ? (labRestantes? Math.ceil(faltan/labRestantes) : (faltan? Infinity : 0)) : null;
+    const proyeccion = (faltan && ritmo>0) ? sumarDiasLaborables(h, Math.ceil(faltan/ritmo), jor.dias) : (faltan? null : h);
+    const lunes = App.Repo.rangoSemana(h).inicio;
+    return {total, instaladas, faltan, asignadasPend, sinAsignar: Math.max(faltan-asignadasPend,0), ritmo, necesario, proyeccion, fin, labRestantes,
+      unidad: (i.produccion||{}).unidadNombre || 'unidades', ppcSemana: ppc(asg, lunes, h), asignaciones: asg.length, fuente: prod.fuente};
+  }
+  function tarjetaMeta(i, m){
+    const btnAsignar = '<button class="btn-primary" style="margin-top:10px;" onclick="App.Plan.asignar(\''+i.id+'\')">+ Asignar trabajo</button>';
+    if(!m.total) return '<div class="card" style="border-left:3px solid var(--acento);"><h3>🎯 Meta del proyecto</h3>'+
+      '<div style="font-size:12.5px; color:var(--texto-suave); line-height:1.5;">Define el total a instalar (por ejemplo, 2700 puertas). Cada trabajo que asignes y registres se irá descontando solo.</div>'+
+      '<button class="btn-outline" onclick="App.Handlers.configurarProduccion(\''+i.id+'\')">Definir meta</button>'+btnAsignar+'</div>';
+    const pct = m.total? Math.min(m.instaladas/m.total*100, 100) : 0;
+    const pctTxt = pct>0 && pct<10 ? (Math.round(pct*10)/10).toString().replace('.',',') : Math.round(pct);
+    let proy = '';
+    if(m.faltan===0) proy = '<span style="color:#5FC48A;">✓ Meta cumplida</span>';
+    else if(!m.proyeccion) proy = '<span style="color:var(--texto-suave);">Aún sin ritmo para proyectar: registra avance unos días.</span>';
+    else if(m.fin){ const d = dias(m.fin, m.proyeccion);
+      proy = d<=0 ? '<span style="color:#5FC48A;">✓ A este ritmo terminas el <b>'+fmtFecha(m.proyeccion)+'</b>'+(d<0? ' ('+(-d)+' días antes)':'')+'</span>'
+                  : '<span style="color:#FF5470;">⚠ A este ritmo terminas el <b>'+fmtFecha(m.proyeccion)+'</b>, '+d+' días después de la entrega</span>'; }
+    else proy = 'A este ritmo terminas el <b>'+fmtFecha(m.proyeccion)+'</b>';
+    const ritmoCol = m.necesario==null ? 'var(--texto)' : (m.ritmo>=m.necesario? '#5FC48A' : '#FF5470');
+    const k = (v,l,col)=> '<div style="flex:1; text-align:center;"><div style="font-family:\'Space Grotesk\',sans-serif; font-size:18px; font-weight:700; color:'+(col||'var(--texto)')+';">'+v+'</div><div style="font-size:9.5px; color:var(--texto-suave); line-height:1.2;">'+l+'</div></div>';
+    const p = m.ppcSemana;
+    return '<div class="card" style="border-left:3px solid var(--acento);"><h3>🎯 Meta del proyecto <span class="count">'+pctTxt+'%</span></h3>'+
+      '<div style="font-family:\'Space Grotesk\',sans-serif; font-size:15px; font-weight:700;">Instaladas <span style="color:#5FC48A;">'+m.instaladas+'</span> · Faltan '+m.faltan+' <span style="color:var(--texto-suave); font-weight:500;">de '+m.total+' '+esc(m.unidad)+'</span></div>'+
+      '<div class="progress-track" style="height:9px; margin:7px 0 10px;"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+      '<div style="display:flex; gap:4px; padding:6px 0; border-top:1px solid var(--borde); border-bottom:1px solid var(--borde);">'+
+        k(String(m.ritmo).replace('.',','), 'ritmo actual<br>por día', ritmoCol)+
+        k(m.necesario==null? '—' : (m.necesario===Infinity? '∞' : m.necesario), 'necesario<br>por día')+
+        k(m.asignadasPend, 'asignadas<br>pendientes')+
+        k(p.pct==null? '—' : p.pct+'%', 'plan cumplido<br>esta semana', p.pct==null? null : (p.pct>=80? '#5FC48A' : (p.pct>=60? '#F2B33D' : '#FF5470')))+
+      '</div>'+
+      '<div style="font-size:12px; margin-top:8px; line-height:1.5;">'+proy+'</div>'+
+      (p.total? '<div style="font-size:11px; color:var(--texto-suave); margin-top:2px;">Plan cumplido = asignaciones terminadas a tiempo: '+p.cumplidas+' de '+p.total+' esta semana.</div>':'')+
+      btnAsignar+
+    '</div>';
+  }
+  function proximosHtml(i){
+    const h = hoy(), lim = sumarD(h, 7);
+    const lst = asignaciones(i).filter(a=> !a.completada && !a.cerrada && a.fechaInicio>h && a.fechaInicio<=lim).sort((a,b)=>a.fechaInicio.localeCompare(b.fechaInicio));
+    if(!lst.length) return '';
+    const DS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    return '<div class="card"><h3>📅 Programado próximos días <span class="count">'+lst.length+'</span></h3>'+lst.map(a=>{
+      const d = new Date(a.fechaInicio+'T00:00:00');
+      return '<div class="check-row" data-id="prox-'+a.id+'" style="cursor:pointer;" onclick="App.Handlers.editarActividad(\''+i.id+'\',\''+a.id+'\')"><div class="check-label"><b>'+DS[d.getDay()]+' '+fmtFecha(a.fechaInicio).slice(0,5)+'</b> · '+esc(a.asignado? a.asignado.nombre : 'Sin asignar')+
+        '<div style="font-size:11px; color:var(--texto-suave);">'+esc(a.nombre)+'</div></div><span style="font-size:11px; color:var(--acento);">Editar ›</span></div>';
+    }).join('')+'</div>';
+  }
+  // ---------- Asignar trabajo ----------
+  async function _opciones(i){
+    const trabCat = await App.Repo.catalogoTrabajadores(), grupos = await App.Repo.catalogoGrupos();
+    const set = new Set(i.personalFijoIds||[]); const personas = {}; let o = '';
+    grupos.filter(g=>(g.miembros||[]).some(id=>set.has(id))).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es',{numeric:true})).forEach(g=>{
+      const n = (g.miembros||[]).filter(id=>{ const t=trabCat.find(x=>x.id===id); return t && t.activo!==false; }).length || 1;
+      const v = 'grupo|'+g.id+'|'+g.nombre; personas[v]=n; o += '<option value="'+esc(v)+'">👥 '+esc(g.nombre)+' ('+n+')</option>'; });
+    (i.personalFijoIds||[]).forEach(id=>{ const t=trabCat.find(x=>x.id===id); if(t && t.activo!==false){ const v='trabajador|'+t.id+'|'+t.nombre; personas[v]=1; o += '<option value="'+esc(v)+'">👤 '+esc(t.nombre)+'</option>'; } });
+    (i.personalExtra||[]).forEach(p=>{ const v='trabajador|'+p.id+'|'+p.nombre; personas[v]=1; o += '<option value="'+esc(v)+'">👤 '+esc(p.nombre)+'</option>'; });
+    return {html:o, personas};
+  }
+  async function asignar(instId, base){
+    const i = await App.Repo.obtener(instId); if(!i) return;
+    const jor = await App.Repo.parametrosJornada();
+    const op = await _opciones(i);
+    if(!op.html){ App.UIHelpers.toast('Primero asigna personal o un grupo a este proyecto (Antes → Equipo)'); return; }
+    const tiempos = await App.Repo.catalogoActividades();
+    const m = meta(i, jor);
+    const u = norm(m.unidad);
+    const tSug = tiempos.find(t=> norm(t.unidad)===u) || tiempos[0] || null;
+    const items = (i.elementos && i.elementos.items) || [];
+    const tipoEl = items.length ? (App.Elementos.tipos(i).find(t=> norm(t)===u) || App.Elementos.tipos(i)[0]) : null;
+    const pisos = {};
+    if(tipoEl) items.filter(x=>x.tipo===tipoEl && !App.Elementos.aceptada(x)).forEach(x=>{ const p = String(x.piso||''); pisos[p] = (pisos[p]||0)+1; });
+    App.State.asig = {instId, personas: op.personas, tiempos, jor, pisos, tipoEl, base: base||null, sinAsignar: m.sinAsignar, total:m.total};
+    const pisosOrd = Object.keys(pisos).sort((a,b)=> App.Elementos.pisoNum(a)-App.Elementos.pisoNum(b));
+    const chip = (v,l)=> '<button type="button" class="btn-outline asgCuando" data-v="'+v+'" style="margin:0; padding:9px 4px; font-size:12px;" onclick="App.Plan._cuando(\''+v+'\')">'+l+'</button>';
+    App.UIHelpers.openModal(base? '↪ Reprogramar lo que faltó' : '+ Asignar trabajo',
+      (m.total? '<div style="padding:9px 10px; border-radius:8px; background:var(--fondo-alt); font-size:12px; margin-bottom:10px;">Faltan <b>'+m.faltan+'</b> de '+m.total+' '+esc(m.unidad)+' · ya asignadas pendientes: <b>'+m.asignadasPend+'</b> · sin asignar: <b style="color:var(--acento);">'+m.sinAsignar+'</b></div>' : '')+
+      '<label>¿Quién lo hace?</label><select id="asgQuien" onchange="App.Plan._recalc()">'+op.html+'</select>'+
+      '<label>¿Qué trabajo?</label><select id="asgTiempo" onchange="App.Plan._recalc()">'+
+        (tiempos.length? tiempos.map(t=>'<option value="'+t.id+'"'+(tSug&&t.id===tSug.id?' selected':'')+'>'+esc(t.nombre)+' · '+String(t.horasPorUnidad).replace('.',',')+' h por '+esc(t.unidad||'unidad')+'</option>').join('') : '')+
+        '<option value="">Otro (sin tiempo estándar)</option></select>'+
+      '<div id="asgOtro" style="display:none;"><label>Describe el trabajo</label><input type="text" id="asgDesc" placeholder="Ej. Regular bisagras piso 2"><label>Unidad</label><input type="text" id="asgUnidad" value="'+esc(m.unidad||'unidades')+'"></div>'+
+      (pisosOrd.length? '<label>Piso (opcional)</label><select id="asgPiso" onchange="App.Plan._piso()"><option value="">— Sin piso específico —</option>'+pisosOrd.map(p=>'<option value="'+esc(p)+'">'+(/^\d+$/.test(p)?'Piso '+esc(p):esc(p))+' · '+pisos[p]+' por instalar</option>').join('')+'</select>' : '')+
+      '<label>¿Cuántas?</label><input type="text" inputmode="numeric" id="asgCant" value="'+(base? base.cant : '')+'" placeholder="Ej. 4" oninput="App.Plan._recalc()">'+
+      '<label>¿Cuándo?</label><div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:8px;">'+chip('hoy','Hoy')+chip('manana','Mañana')+chip('semana','Esta semana')+chip('fechas','Elegir')+'</div>'+
+      '<div id="asgFechas" style="display:none; gap:8px;"><div style="flex:1;"><label>Desde</label><input type="date" id="asgIni" onchange="App.Plan._recalc()"></div><div style="flex:1;"><label>Hasta</label><input type="date" id="asgFin" onchange="App.Plan._recalc(true)"></div></div>'+
+      '<div id="asgCalc" style="padding:9px 10px; border-radius:8px; background:var(--info-fondo); font-size:12px; line-height:1.55; margin-bottom:10px; display:none;"></div>'+
+      '<button class="btn-primary" onclick="App.Plan._guardar()">'+(base? 'Reprogramar' : 'Asignar')+'</button>');
+    if(base && base.asignado){ const s = document.getElementById('asgQuien'); const v = base.asignado.tipo+'|'+base.asignado.id+'|'+base.asignado.nombre; if([...s.options].some(o=>o.value===v)) s.value = v; }
+    if(base && base.tiempoId){ const s = document.getElementById('asgTiempo'); if([...s.options].some(o=>o.value===base.tiempoId)) s.value = base.tiempoId; }
+    if(base && base.piso && document.getElementById('asgPiso')){ document.getElementById('asgPiso').value = base.piso; }
+    _cuando(base && base.cuando || 'hoy');
+  }
+  function _cuando(v){
+    const st = App.State.asig; if(!st) return; st.cuando = v;
+    document.querySelectorAll('.asgCuando').forEach(b=>{ const on = b.dataset.v===v; b.style.background = on? 'var(--acento)' : ''; b.style.color = on? 'var(--sobre-acento)' : ''; b.style.borderColor = on? 'var(--acento)' : ''; });
+    const h = hoy(), dS = st.jor.dias;
+    let ini = h, fin = h;
+    if(v==='manana'){ ini = sumarD(h,1); while(!esLaborable(ini,dS)) ini = sumarD(ini,1); fin = ini; }
+    if(v==='semana'){ fin = App.Repo.rangoSemana(h).fin; while(!esLaborable(fin,dS) && fin>h) fin = sumarD(fin,-1); }
+    const box = document.getElementById('asgFechas');
+    box.style.display = v==='fechas'? 'flex' : 'none';
+    if(v!=='fechas'){ document.getElementById('asgIni').value = ini; document.getElementById('asgFin').value = fin; }
+    else if(!document.getElementById('asgIni').value){ document.getElementById('asgIni').value = h; document.getElementById('asgFin').value = h; }
+    _recalc();
+  }
+  function _piso(){
+    const st = App.State.asig; const p = document.getElementById('asgPiso').value;
+    if(p && st.pisos[p]) document.getElementById('asgCant').value = st.pisos[p];
+    _recalc();
+  }
+  function _recalc(){
+    const st = App.State.asig; if(!st) return;
+    const g = id=>document.getElementById(id);
+    const tid = g('asgTiempo').value; g('asgOtro').style.display = tid? 'none' : 'block';
+    const t = st.tiempos.find(x=>x.id===tid);
+    const cant = parseInt(g('asgCant').value)||0;
+    const per = st.personas[g('asgQuien').value] || 1;
+    const out = g('asgCalc');
+    const ini = g('asgIni').value, fin = g('asgFin').value;
+    if(!cant){ out.style.display='none'; return; }
+    const partes = [];
+    if(t){
+      const hh = cant*t.horasPorUnidad, hr = hh/per, diasN = Math.max(Math.ceil(hr/st.jor.horas - 1e-9),1);
+      const disp = (ini && fin && fin>=ini)? laborablesEntre(ini, fin, st.jor.dias) : 0;
+      partes.push(cant+' × '+String(t.horasPorUnidad).replace('.',',')+' h = <b>'+String(Math.round(hh*10)/10).replace('.',',')+' h de trabajo</b>'+(per>1? ' ÷ '+per+' personas = <b>'+String(Math.round(hr*10)/10).replace('.',',')+' h</b>':''));
+      if(disp) partes.push(diasN<=disp ? '<span style="color:#5FC48A;">✓ Alcanza: necesita '+diasN+' día(s) de '+st.jor.horas+' h y tienes '+disp+'</span>'
+                                       : '<span style="color:#FF5470;">⚠ No alcanza: necesita '+diasN+' día(s) y elegiste '+disp+'. Termina el '+fmtFecha(sumarDiasLaborables(ini, diasN, st.jor.dias))+'</span>');
+    }
+    if(st.total && cant>st.sinAsignar) partes.push('<span style="color:#F2B33D;">Ojo: asignas más de lo que queda sin asignar ('+st.sinAsignar+').</span>');
+    out.innerHTML = partes.join('<br>'); out.style.display = partes.length? 'block' : 'none';
+  }
+  async function _guardar(){
+    const st = App.State.asig; if(!st) return;
+    const g = id=>document.getElementById(id);
+    const v = g('asgQuien').value; if(!v){ App.UIHelpers.toast('Elige quién lo hace'); return; }
+    const [tipoA, idA, ...r] = v.split('|'); const asignado = {tipo:tipoA, id:idA, nombre:r.join('|')};
+    const cant = leerNum('asgCant', {min:1, max:100000, entero:true, etiqueta:'Cantidad'}); if(cant===undefined) return;
+    const ini = g('asgIni').value, fin = g('asgFin').value;
+    if(!ini || !fin || fin<ini){ App.UIHelpers.toast('⚠ Revisa las fechas: "Hasta" debe ser igual o posterior a "Desde"'); return; }
+    const t = st.tiempos.find(x=>x.id===g('asgTiempo').value);
+    const unidad = t? (t.unidad||'unidad') : (g('asgUnidad').value.trim()||'unidades');
+    if(!t && !g('asgDesc').value.trim()){ App.UIHelpers.toast('Describe el trabajo'); return; }
+    const pisoSel = g('asgPiso')? g('asgPiso').value : '';
+    const pl = cant>1 ? (/[aeiouáéíóú]$/i.test(unidad)? unidad+'s' : (/[dlnr]$/i.test(unidad)? unidad+'es' : unidad+'s')) : unidad;
+    const nombre = (t? cant+' '+pl : g('asgDesc').value.trim()+' ('+cant+' '+pl+')')+(pisoSel? ' · '+(/^\d+$/.test(pisoSel)?'Piso '+pisoSel:pisoSel):'')+' · '+asignado.nombre;
+    const i = await App.Repo.obtener(st.instId);
+    const per = st.personas[v]||1;
+    const act = {id: uid('asg'), tipo:'asignacion', nombre, fechaInicio:ini, fechaFin:fin, horasEstimadas: t? Math.round(cant*t.horasPorUnidad*100)/100 : 0, personas:per,
+      unidades:{cantidad:cant, unidad, tiempoId: t? t.id : null}, asignado, piso: pisoSel||'', avances:[], completada:false, creada: hoy(), origenId: st.base? st.base.origenId : null};
+    if(pisoSel && st.tipoEl){
+      const pend = App.Elementos.lista(i).filter(x=> x.tipo===st.tipoEl && String(x.piso)===pisoSel && !App.Elementos.aceptada(x)).sort(App.Elementos.ordenar);
+      const toma = (st.base && st.base.elementoIds) ? pend.filter(x=> st.base.elementoIds.includes(x.id)) : pend.slice(0, cant);
+      toma.forEach(x=>{ x.asignado = asignado; }); act.elementoIds = toma.map(x=>x.id);
+    }
+    if(st.base && st.base.origenId){
+      const o = i.cronograma.find(x=>x.id===st.base.origenId);
+      if(o){ o.cerrada = true; o.completada = true; o.fechaFinReal = hoy(); o.trasladado = cant; }
+    }
+    i.cronograma.push(act);
+    App.UIHelpers.closeModal();
+    try{ await App.Repo.guardar(i); }catch(e){ App.UIHelpers.restaurarModal(); App.UIHelpers.toast('⚠ No se pudo guardar. Intenta de nuevo.'); e._avisado = true; throw e; }
+    App.UIHelpers.descartarModalOculto(); await App.Router.refrescar();
+    App.UIHelpers.toast((st.base? 'Reprogramado: ' : 'Asignado: ')+nombre);
+    App.State.asig = null;
+  }
+  async function reprogramar(instId, actId){
+    const i = await App.Repo.obtener(instId); const a = (i.cronograma||[]).find(x=>x.id===actId); if(!a || !a.unidades) return;
+    const falt = Math.max(a.unidades.cantidad - (hechasDe(a)||0), 0);
+    if(!falt){ App.UIHelpers.toast('No falta nada en esta asignación'); return; }
+    const restantes = a.elementoIds ? a.elementoIds.filter(id=>{ const x = App.Elementos.lista(i).find(e=>e.id===id); return x && !App.Elementos.aceptada(x); }) : null;
+    await asignar(instId, {cant:falt, asignado:a.asignado, tiempoId:a.unidades.tiempoId, piso:a.piso||'', origenId:a.id, elementoIds:restantes, cuando: a.fechaFin<hoy()? 'hoy' : 'manana'});
+  }
+  return {_d: sumarD, asignaciones, hechasDe, estadoAsig, ESTADO_TXT, ppc, meta, tarjetaMeta, proximosHtml, asignar, _cuando, _piso, _recalc, _guardar, reprogramar, laborablesEntre};
 })();
 
 /* ===================== ROUTER ===================== */
@@ -6265,7 +6571,7 @@ App.Router = (function(){
 
   function irDashboard(){ instActualId=null; vista='panel'; App.Views.dashboard(); }
   function _estado(){ return {vista, instId:instActualId, fase:faseActual, modo:(App.State.fisc||{}).modo}; }
-  function abrirFiscalizacion(id){ instActualId=id; vista='fisc'; App.State.fisc = Object.assign(App.State.fisc||{}, {modo:'calidad', filtro:'todos', abierto:null}); App.Elementos.vista(id); }
+  function abrirFiscalizacion(id, piso){ instActualId=id; vista='fisc'; App.State.fisc = Object.assign(App.State.fisc||{}, {modo:'calidad', filtro:'todos', abierto: piso||null, _abrirPiso: piso||null, _recien: piso||null}); App.Elementos.vista(id); }
   function abrirEntrega(id){ instActualId=id; vista='fisc'; App.State.fisc = Object.assign(App.State.fisc||{}, {modo:'entrega', filtro:'todos', abierto:null}); App.Elementos.vista(id); }
   function abrirMiDia(){ instActualId=null; vista='midia'; App.State._midiaAbierto = false; App.Views.miDia(); }
 
